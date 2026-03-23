@@ -8,7 +8,6 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
-  <!-- Leaflet Draw -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.css"/>
   <script src="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.js"></script>
 
@@ -58,8 +57,8 @@
       --highlight-ring:rgba(251,113,133,.22);
     }
 
-    html,body{height:100%;margin:0;background:var(--ui-bg); overscroll-behavior:none;}
-    #map{position:absolute; inset:0; width:100%; height:100%; background:#d1d5db;}
+    html,body{height:100%;margin:0;background:var(--ui-bg);overscroll-behavior:none;}
+    #map{position:absolute;inset:0;width:100%;height:100%;background:#d1d5db;}
 
     .topbar{
       position:fixed; top:0; left:0; right:0; z-index:3000;
@@ -70,69 +69,50 @@
       border:1px solid var(--ui-border);
       border-top:none;
       box-shadow:var(--ui-shadow);
-      font:14px/1.2 system-ui, -apple-system, Segoe UI, Roboto, Arial;
+      font:14px/1.2 system-ui,-apple-system,Segoe UI,Roboto,Arial;
       color:var(--ui-text);
       backdrop-filter: blur(6px);
     }
 
-    .brandBlock{display:flex; flex-direction:column; gap:6px; align-items:flex-start; margin-right:4px;}
-    .brand{font-weight:900; white-space:nowrap; line-height:1;}
+    .brandBlock{display:flex;flex-direction:column;gap:6px;align-items:flex-start;margin-right:4px;}
+    .brand{font-weight:900;white-space:nowrap;line-height:1;}
     .brandBlock select{
-      height:30px; padding:0 10px; border-radius:10px;
+      height:30px;padding:0 10px;border-radius:10px;
       border:1px solid var(--inp-border);
-      background:var(--inp-bg);
-      color:var(--inp-text);
-      outline:none;
-      font-weight:800;
-      min-width:150px;
+      background:var(--inp-bg);color:var(--inp-text);outline:none;font-weight:800;min-width:150px;
     }
 
-    .field{display:flex; flex-direction:column; gap:4px}
-    .field label{font-size:11px; color:var(--ui-muted); margin-left:2px}
+    .field{display:flex;flex-direction:column;gap:4px}
+    .field label{font-size:11px;color:var(--ui-muted);margin-left:2px}
     .field input,.field select{
-      height:34px; padding:0 10px; border-radius:10px;
+      height:34px;padding:0 10px;border-radius:10px;
       border:1px solid var(--inp-border);
-      background:var(--inp-bg);
-      color:var(--inp-text);
-      outline:none;
-      min-width:120px;
+      background:var(--inp-bg);color:var(--inp-text);outline:none;min-width:120px;
     }
     .field input::placeholder{color:var(--inp-ph)}
-    .field input:focus,.field select:focus{border-color:var(--inp-focus); box-shadow:0 0 0 3px rgba(37,99,235,.12)}
+    .field input:focus,.field select:focus{border-color:var(--inp-focus);box-shadow:0 0 0 3px rgba(37,99,235,.12)}
     .w240{min-width:240px}
     .w160{min-width:160px}
     .w140{min-width:140px}
 
     .btn{
-      height:34px; padding:0 12px; border-radius:10px;
+      height:34px;padding:0 12px;border-radius:10px;
       border:1px solid var(--btn-border);
-      background:var(--btn-bg);
-      color:var(--btn-text);
-      cursor:pointer;
-      font-weight:800;
-      display:inline-flex;
-      align-items:center;
-      justify-content:center;
-      gap:8px;
-      user-select:none;
+      background:var(--btn-bg);color:var(--btn-text);
+      cursor:pointer;font-weight:800;
+      display:inline-flex;align-items:center;justify-content:center;gap:8px;user-select:none;
     }
-    .btn.primary{ background:var(--btn-primary); border-color:var(--btn-primary); color:var(--btn-primary-text); }
+    .btn.primary{background:var(--btn-primary);border-color:var(--btn-primary);color:var(--btn-primary-text);}
     .btn:active{transform:translateY(1px)}
 
     .pill{
       align-self:center;
-      padding:6px 10px;
-      border-radius:999px;
-      border:1px solid var(--pill-border);
-      background:var(--pill-bg);
-      white-space:nowrap;
-      font-weight:900;
-      color:var(--ui-text);
-      display:flex;
-      gap:8px;
-      align-items:center;
+      padding:6px 10px;border-radius:999px;
+      border:1px solid var(--pill-border);background:var(--pill-bg);
+      white-space:nowrap;font-weight:900;color:var(--ui-text);
+      display:flex;gap:8px;align-items:center;
     }
-    #loadStatus{ margin-left:auto; cursor:pointer; }
+    #loadStatus{margin-left:auto;cursor:pointer;}
 
     .dot{width:8px;height:8px;border-radius:50%;background:rgba(148,163,184,.8);display:inline-block;}
     .dot.good{background:var(--good)}
@@ -140,13 +120,13 @@
     .dot.bad{background:var(--bad)}
 
     .ac{
-      position:absolute; z-index:4000;
+      position:absolute;z-index:4000;
       background:var(--ui-bg);
       border:1px solid var(--ui-border);
       border-radius:12px;
       box-shadow:var(--ui-shadow);
       overflow:hidden;
-      font:14px/1.2 system-ui, Arial;
+      font:14px/1.2 system-ui,Arial;
       color:var(--ui-text);
       max-height:260px;
       overflow:auto;
@@ -162,14 +142,14 @@
 
     .panel{
       position:absolute; top:88px; right:12px; z-index:2500;
-      width:640px; max-height: calc(100vh - 110px);
+      width:640px; max-height:calc(100vh - 110px);
       display:flex; flex-direction:column;
       background:var(--ui-bg);
       border:1px solid var(--ui-border);
       border-radius:16px;
       box-shadow:var(--ui-shadow);
       overflow:hidden;
-      font:14px/1.25 system-ui, -apple-system, Segoe UI, Roboto, Arial;
+      font:14px/1.25 system-ui,-apple-system,Segoe UI,Roboto,Arial;
       color:var(--ui-text);
       user-select:none;
     }
@@ -180,13 +160,13 @@
       border-bottom:1px solid var(--ui-border);
       cursor:move;
     }
-    .panel-h .t{font-weight:900; display:flex; align-items:center; gap:10px;}
+    .panel-h .t{font-weight:900;display:flex;align-items:center;gap:10px;}
     .panel-h .x{
       width:30px;height:30px;border-radius:10px;border:1px solid var(--ui-border);
-      background:var(--ui-soft2); color:var(--ui-text);
-      cursor:pointer; font-weight:900;
+      background:var(--ui-soft2);color:var(--ui-text);
+      cursor:pointer;font-weight:900;
     }
-    .panel-b{padding:10px 12px; overflow:auto; user-select:text;}
+    .panel-b{padding:10px 12px;overflow:auto;user-select:text;}
 
     .kpis{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:10px;}
     .kpi{border:1px solid var(--ui-border);background:var(--ui-soft);border-radius:14px;padding:10px;}
@@ -197,17 +177,17 @@
     .detail{
       border:1px solid var(--ui-border);
       background:var(--ui-soft);
-      border-radius:14px; padding:10px;
+      border-radius:14px;padding:10px;
       margin:10px 0 12px 0;
     }
-    .detail .title{font-weight:900; margin-bottom:6px}
+    .detail .title{font-weight:900;margin-bottom:6px}
     .detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px 12px;font-size:13px;}
     .kv{display:flex;justify-content:space-between;gap:10px}
     .k{color:var(--ui-muted)}
     .v{font-weight:900}
 
-    table{width:100%; border-collapse:collapse; font-size:13px;}
-    th,td{padding:10px 6px; border-bottom:1px solid var(--ui-border); vertical-align:top; text-align:left;}
+    table{width:100%;border-collapse:collapse;font-size:13px;}
+    th,td{padding:10px 6px;border-bottom:1px solid var(--ui-border);vertical-align:top;text-align:left;}
     th{font-size:12px;color:var(--ui-muted);font-weight:900;position:sticky;top:0;background:var(--ui-bg);}
     tr{cursor:pointer}
     tr:hover{background:var(--ui-soft)}
@@ -223,21 +203,16 @@
       box-shadow:0 12px 34px rgba(2,6,23,.12);
     }
 
-    .rcard{font:14px/1.25 system-ui, Arial; padding:8px; min-width:300px;}
+    .rcard{font:14px/1.25 system-ui,Arial;padding:8px;min-width:300px;}
     .rcard .h{font-weight:900;margin-bottom:6px}
-    .rcard .row2{display:grid; grid-template-columns:1fr; gap:8px; margin-top:8px;}
-    .rcard input, .rcard textarea{
-      width:100%;
-      padding:9px 10px;
-      border-radius:12px;
+    .rcard .row2{display:grid;grid-template-columns:1fr;gap:8px;margin-top:8px;}
+    .rcard input,.rcard textarea{
+      width:100%;padding:9px 10px;border-radius:12px;
       border:1px solid var(--inp-border);
-      background:var(--inp-bg);
-      color:var(--inp-text);
-      outline:none;
-      box-sizing:border-box;
+      background:var(--inp-bg);color:var(--inp-text);outline:none;box-sizing:border-box;
     }
-    .rcard textarea{min-height:84px; resize:vertical;}
-    .rcard .note{font-size:12px; color:var(--ui-muted); margin-top:6px}
+    .rcard textarea{min-height:84px;resize:vertical;}
+    .rcard .note{font-size:12px;color:var(--ui-muted);margin-top:6px}
 
     .tri{
       width:0;height:0;
@@ -254,17 +229,17 @@
       border:1px solid rgba(255,255,255,.12);
       border-radius:14px; box-shadow:0 14px 45px rgba(0,0,0,.35);
       backdrop-filter: blur(10px);
-      font:14px/1.25 system-ui, -apple-system, Segoe UI, Roboto, Arial;
+      font:14px/1.25 system-ui,-apple-system,Segoe UI,Roboto,Arial;
     }
     .missPanel.hidden{display:none}
     .missHead{
-      display:flex; align-items:center; justify-content:space-between;
-      padding:10px 12px; border-bottom:1px solid rgba(255,255,255,.12);
+      display:flex;align-items:center;justify-content:space-between;
+      padding:10px 12px;border-bottom:1px solid rgba(255,255,255,.12);
     }
-    .missSummary{opacity:.75; margin-left:8px; font-size:12px}
-    .missClose{background:transparent; color:#fff; border:0; font-size:16px; cursor:pointer}
+    .missSummary{opacity:.75;margin-left:8px;font-size:12px}
+    .missClose{background:transparent;color:#fff;border:0;font-size:16px;cursor:pointer}
     .missTabs{
-      display:flex; gap:6px; padding:8px 10px; border-bottom:1px solid rgba(255,255,255,.12);
+      display:flex;gap:6px;padding:8px 10px;border-bottom:1px solid rgba(255,255,255,.12);
       flex-wrap:wrap;
     }
     .missTab{
@@ -277,18 +252,18 @@
       border:1px solid rgba(99,102,241,.45); color:#fff;
       padding:6px 10px; border-radius:10px; cursor:pointer; font-size:12px;
     }
-    .missBody{padding:10px; overflow:auto; max-height:calc(70vh - 92px)}
+    .missBody{padding:10px;overflow:auto;max-height:calc(70vh - 92px)}
     .missRow{
-      padding:8px 9px; border:1px solid rgba(255,255,255,.10);
-      border-radius:12px; margin-bottom:8px; background:rgba(0,0,0,.15);
+      padding:8px 9px;border:1px solid rgba(255,255,255,.10);
+      border-radius:12px;margin-bottom:8px;background:rgba(0,0,0,.15);
     }
-    .missRow b{display:block; font-size:13px}
-    .missRow .r{opacity:.85; font-size:12px; margin-top:2px}
-    .missRow .m{opacity:.65; font-size:11px; margin-top:4px; white-space:pre-wrap}
+    .missRow b{display:block;font-size:13px}
+    .missRow .r{opacity:.85;font-size:12px;margin-top:2px}
+    .missRow .m{opacity:.65;font-size:11px;margin-top:4px;white-space:pre-wrap}
 
     #btnMenu{display:none;}
     .drawerBackdrop{
-      position:fixed; inset:0; z-index:4500;
+      position:fixed;inset:0;z-index:4500;
       background:rgba(0,0,0,.38);
       backdrop-filter: blur(2px);
       display:none;
@@ -298,19 +273,16 @@
       width:min(360px, 88vw);
       background:var(--ui-bg);
       border-right:1px solid var(--ui-border);
-      box-shadow: 18px 0 40px rgba(0,0,0,.22);
+      box-shadow:18px 0 40px rgba(0,0,0,.22);
       transform:translateX(-102%);
-      transition: transform .22s ease;
-      display:flex; flex-direction:column;
-      padding:12px;
-      gap:10px;
-      overflow:auto;
-      -webkit-overflow-scrolling: touch;
+      transition:transform .22s ease;
+      display:flex;flex-direction:column;
+      padding:12px;gap:10px;overflow:auto;-webkit-overflow-scrolling:touch;
     }
     .drawer.open{transform:translateX(0);}
     .drawerTop{
-      display:flex; align-items:center; justify-content:space-between;
-      padding-bottom:8px; border-bottom:1px solid var(--ui-border);
+      display:flex;align-items:center;justify-content:space-between;
+      padding-bottom:8px;border-bottom:1px solid var(--ui-border);
     }
     .drawerTitle{font-weight:900}
     .drawerClose{
@@ -326,15 +298,41 @@
       top:auto; bottom:10px; width:auto;
       max-height:72vh; border-radius:18px; z-index:5200;
     }
-    .panel.mobileSheet .panel-h{cursor:default; user-select:none;}
+    .panel.mobileSheet .panel-h{cursor:default;user-select:none;}
     .grab{
-      width:44px; height:5px; border-radius:999px;
+      width:44px;height:5px;border-radius:999px;
       background:rgba(148,163,184,.65);
       display:none;
     }
     .panel.mobileSheet .grab{display:inline-block;}
-    .panel.mobileSheet.collapsed{max-height:54px; overflow:hidden;}
+    .panel.mobileSheet.collapsed{max-height:54px;overflow:hidden;}
     .panel.mobileSheet.collapsed .panel-b{display:none;}
+
+    .multiSelect{position:relative;min-width:160px;}
+    .multiSelectBtn{
+      width:100%;height:34px;padding:0 10px;border-radius:10px;
+      border:1px solid var(--inp-border);
+      background:var(--inp-bg);color:var(--inp-text);
+      text-align:left;cursor:pointer;font:inherit;
+      overflow:hidden;white-space:nowrap;text-overflow:ellipsis;
+    }
+    .multiSelectMenu{
+      position:absolute;top:38px;left:0;right:0;z-index:5000;
+      display:none;background:var(--ui-bg);
+      border:1px solid var(--ui-border);
+      border-radius:12px;box-shadow:var(--ui-shadow);padding:8px;
+      max-height:240px;overflow:auto;
+    }
+    .multiSelectMenu.open{display:block;}
+    .multiSelectMenu label{
+      display:flex;align-items:center;gap:8px;
+      padding:7px 6px;border-radius:8px;cursor:pointer;color:var(--ui-text);
+      font-size:14px;
+    }
+    .multiSelectMenu label:hover{background:var(--ui-soft);}
+    .multiSelectMenu input[type="checkbox"]{
+      width:16px;height:16px;min-width:16px;
+    }
 
     @media (max-width: 760px){
       .topbar{gap:8px;padding:8px 10px;align-items:center;}
@@ -347,9 +345,9 @@
     }
 
     .leaflet-draw-toolbar a{
-      background:var(--ui-bg) !important;
-      color:var(--ui-text) !important;
-      border:1px solid var(--ui-border) !important;
+      background:var(--ui-bg)!important;
+      color:var(--ui-text)!important;
+      border:1px solid var(--ui-border)!important;
     }
   </style>
 </head>
@@ -384,14 +382,16 @@
 
   <div class="field w160 desktopOnly" id="certificateWrapDesktop">
     <label>Zertifikat</label>
-    <select id="certificateFilter">
-      <option value="alle">Alle Zertifikate</option>
-      <option value="enplus">EnPlus</option>
-      <option value="dinplus">DINplus</option>
-      <option value="sure">SURE</option>
-      <option value="cpp">CPP</option>
-      <option value="kein zertifikat">Kein Zertifikat</option>
-    </select>
+    <div class="multiSelect" id="certificateMulti">
+      <button type="button" class="multiSelectBtn" id="certificateBtn">Alle Zertifikate</button>
+      <div class="multiSelectMenu" id="certificateMenu">
+        <label><input type="checkbox" value="enplus"> EnPlus</label>
+        <label><input type="checkbox" value="dinplus"> DINplus</label>
+        <label><input type="checkbox" value="sure"> SURE</label>
+        <label><input type="checkbox" value="cpp"> CPP</label>
+        <label><input type="checkbox" value="kein zertifikat"> Kein Zertifikat</label>
+      </div>
+    </div>
   </div>
 
   <div class="field w140 desktopOnly">
@@ -471,7 +471,16 @@
 
     <div class="field">
       <label>Zertifikat</label>
-      <select id="certificateFilterMobile"></select>
+      <div class="multiSelect" id="certificateMultiMobile">
+        <button type="button" class="multiSelectBtn" id="certificateBtnMobile">Alle Zertifikate</button>
+        <div class="multiSelectMenu" id="certificateMenuMobile">
+          <label><input type="checkbox" value="enplus"> EnPlus</label>
+          <label><input type="checkbox" value="dinplus"> DINplus</label>
+          <label><input type="checkbox" value="sure"> SURE</label>
+          <label><input type="checkbox" value="cpp"> CPP</label>
+          <label><input type="checkbox" value="kein zertifikat"> Kein Zertifikat</label>
+        </div>
+      </div>
     </div>
 
     <div class="field">
@@ -567,8 +576,8 @@
     </div>
 
     <div class="small" style="margin:6px 0 10px 0">
-      <b>Modus Kunden:</b> Kunde auswählen → Firmen-Vorschläge (schnell).
-      <br><b>Modus Firmen:</b> Firma auswählen → Kunden-Vorschläge (schnell).
+      <b>Modus Kunden:</b> Kunde auswählen → Firmen-Vorschläge.
+      <br><b>Modus Firmen:</b> Firma auswählen → Kunden-Vorschläge.
       <br><b>Route:</b> Echte Strecke wird erst beim Klick geladen.
     </div>
 
@@ -577,9 +586,6 @@
 </div>
 
 <script>
-/* =========================
-   LocalStorage
-   ========================= */
 function saveLS(key, obj){
   try{ localStorage.setItem(key, JSON.stringify(obj)); }catch(e){}
 }
@@ -590,9 +596,6 @@ function loadLS(key, fallback){
   }catch(e){ return fallback; }
 }
 
-/* =========================
-   CONFIG
-   ========================= */
 const CONFIG = {
   firmsCsvUrl: "https://docs.google.com/spreadsheets/d/1f1oD1TlYWPRbD12d05yIGkqmXVygVt3ZHLk9U0bKoTs/gviz/tq?tqx=out:csv&gid=0",
   customersCsvUrl: "https://docs.google.com/spreadsheets/d/1DaiLyZbhJkdSQ1PHbJQmguIrDnGrrhiAVgJC4PJO8vA/gviz/tq?tqx=out:csv&gid=0",
@@ -600,17 +603,14 @@ const CONFIG = {
   geocodeDelayMs: 1100
 };
 
-const LS_GEO_CACHE_KEY = "salesMap_geoCache_v12";
-const LS_PRICE_OVERRIDES_KEY = "salesMap_priceOverrides_v12";
-const LS_PANEL_POS_KEY = "salesMap_panelPos_v12";
-const LS_COLOR_SCHEME_KEY = "salesMap_colorScheme_v7";
-const LS_THEME_KEY = "salesMap_theme_v6";
-const LS_NOTES_KEY = "salesMap_notes_v2";
-const LS_ZONE_GEOJSON_KEY = "salesMap_zone_geojson_v2";
+const LS_GEO_CACHE_KEY = "salesMap_geoCache_v13";
+const LS_PRICE_OVERRIDES_KEY = "salesMap_priceOverrides_v13";
+const LS_PANEL_POS_KEY = "salesMap_panelPos_v13";
+const LS_COLOR_SCHEME_KEY = "salesMap_colorScheme_v8";
+const LS_THEME_KEY = "salesMap_theme_v7";
+const LS_NOTES_KEY = "salesMap_notes_v3";
+const LS_ZONE_GEOJSON_KEY = "salesMap_zone_geojson_v3";
 
-/* =========================
-   Missing tracking
-   ========================= */
 const missing = { firmen: [], kunden: [], auftraege: [] };
 let activeMissTab = "firmen";
 
@@ -660,9 +660,6 @@ function exportMissingCsv(){
   URL.revokeObjectURL(a.href);
 }
 
-/* =========================
-   State
-   ========================= */
 let map, customers=[], firms=[];
 let customerMarkers=[], firmMarkers=[];
 let selectedCustomer=null;
@@ -686,9 +683,6 @@ let drawControl = null;
 let lastResults = [];
 let currentFocusedRow = null;
 
-/* =========================
-   Init
-   ========================= */
 window.addEventListener("load", ()=>init().catch(err=>{
   console.error("INIT ERROR:", err);
   alert("Fehler beim Laden der Karte. Öffne F12 → Konsole für Details.");
@@ -698,7 +692,7 @@ async function init(){
   applyThemeFromLS();
   if(!window.L) throw new Error("Leaflet (L) nicht geladen.");
 
-  map = L.map('map', { worldCopyJump:true }).setView([51.2, 10.4], 6);
+  map = L.map("map", { worldCopyJump:true }).setView([51.2, 10.4], 6);
 
   L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
     maxZoom: 19,
@@ -712,6 +706,7 @@ async function init(){
   initUI();
   initMissingUI();
   initMobileUI();
+  initCertificateFilters();
   applyResponsiveLayout();
   window.addEventListener("resize", applyResponsiveLayout);
 
@@ -774,9 +769,6 @@ function initMissingUI(){
   document.getElementById("missExport")?.addEventListener("click", exportMissingCsv);
 }
 
-/* =========================
-   Zone / Polygon Tools
-   ========================= */
 function initZoneTools(){
   zoneGroup = new L.FeatureGroup();
   map.addLayer(zoneGroup);
@@ -872,9 +864,6 @@ function pointInZone(lat, lon){
   return pointInPolygon(lat, lon, ring);
 }
 
-/* =========================
-   Mobile UI
-   ========================= */
 function initMobileUI(){
   const btnMenu = document.getElementById("btnMenu");
   const backdrop = document.getElementById("drawerBackdrop");
@@ -887,7 +876,6 @@ function initMobileUI(){
   syncMobileSelect("product", "productMobile");
   syncMobileSelect("colorScheme", "colorSchemeMobile");
   syncMobileSelect("searchType", "searchTypeMobile");
-  syncMobileSelect("certificateFilter", "certificateFilterMobile");
 
   syncMobileInput("radiusKm", "radiusKmMobile");
   syncMobileInput("qtyT", "qtyTMobile");
@@ -981,16 +969,96 @@ function toggleDrawer(){
   open ? closeDrawer() : openDrawer();
 }
 
-/* =========================
-   CSV Parsing
-   ========================= */
+function initCertificateFilters(){
+  initMultiSelect("certificateMulti", "certificateBtn", "certificateMenu", false);
+  initMultiSelect("certificateMultiMobile", "certificateBtnMobile", "certificateMenuMobile", true);
+
+  document.addEventListener("click", (e)=>{
+    const blocks = [
+      document.getElementById("certificateMulti"),
+      document.getElementById("certificateMultiMobile")
+    ];
+    const menus = [
+      document.getElementById("certificateMenu"),
+      document.getElementById("certificateMenuMobile")
+    ];
+    let inside = false;
+    for(const b of blocks){
+      if(b && b.contains(e.target)) inside = true;
+    }
+    if(!inside){
+      menus.forEach(m=>m && m.classList.remove("open"));
+    }
+  });
+
+  updateCertificateButtonText(false);
+  updateCertificateButtonText(true);
+}
+function initMultiSelect(wrapperId, btnId, menuId, isMobileMenu){
+  const wrap = document.getElementById(wrapperId);
+  const btn = document.getElementById(btnId);
+  const menu = document.getElementById(menuId);
+  if(!wrap || !btn || !menu) return;
+
+  btn.addEventListener("click", (e)=>{
+    e.stopPropagation();
+    const other = isMobileMenu ? document.getElementById("certificateMenu") : document.getElementById("certificateMenuMobile");
+    if(other) other.classList.remove("open");
+    menu.classList.toggle("open");
+  });
+
+  menu.querySelectorAll('input[type="checkbox"]').forEach(cb=>{
+    cb.addEventListener("change", ()=>{
+      syncCertificateChecks(isMobileMenu ? "mobile" : "desktop");
+      updateCertificateButtonText(false);
+      updateCertificateButtonText(true);
+
+      if(selectedFirm && !matchesCertificateFilter(selectedFirm)){
+        selectedFirm = null;
+        updateOriginKpi(null);
+        showOrdersForOrigin(null);
+      }
+      renderMarkers();
+      if(getOrigin()) calculate();
+    });
+  });
+}
+function syncCertificateChecks(source){
+  const desktopChecks = Array.from(document.querySelectorAll("#certificateMenu input[type='checkbox']"));
+  const mobileChecks  = Array.from(document.querySelectorAll("#certificateMenuMobile input[type='checkbox']"));
+  const from = source === "mobile" ? mobileChecks : desktopChecks;
+  const to   = source === "mobile" ? desktopChecks : mobileChecks;
+
+  const values = new Map(from.map(cb=>[cb.value, cb.checked]));
+  to.forEach(cb=>{
+    cb.checked = !!values.get(cb.value);
+  });
+}
+function getSelectedCertificates(){
+  const checks = Array.from(document.querySelectorAll("#certificateMenu input[type='checkbox']"));
+  return checks.filter(cb=>cb.checked).map(cb=>cb.value);
+}
+function updateCertificateButtonText(isMobileMenu){
+  const btn = document.getElementById(isMobileMenu ? "certificateBtnMobile" : "certificateBtn");
+  if(!btn) return;
+
+  const selected = getSelectedCertificates();
+  if(!selected.length){
+    btn.textContent = "Alle Zertifikate";
+    return;
+  }
+
+  const labels = selected.map(certificateLabel);
+  btn.textContent = labels.join(", ");
+}
+
 function parseCsv(url){
   return new Promise((resolve, reject)=>{
     Papa.parse(url, {
       download:true,
       header:true,
       skipEmptyLines:true,
-      delimiter: "",
+      delimiter:"",
       transformHeader: (h) => String(h||"").trim().toLowerCase(),
       complete: (res)=>{
         const first = res?.data?.[0];
@@ -1000,7 +1068,7 @@ function parseCsv(url){
             download:true,
             header:true,
             skipEmptyLines:true,
-            delimiter: ";",
+            delimiter:";",
             transformHeader: (h) => String(h||"").trim().toLowerCase(),
             complete: (res2)=>resolve(res2.data),
             error: reject
@@ -1014,9 +1082,6 @@ function parseCsv(url){
   });
 }
 
-/* =========================
-   Load data
-   ========================= */
 async function loadCustomers(){
   const rows = await parseCsv(CONFIG.customersCsvUrl);
   const list = [];
@@ -1145,35 +1210,29 @@ async function loadDeliveries(){
   }
 }
 
-/* =========================
-   Certificates
-   ========================= */
 function normalizeCertificateValue(v){
   const s = String(v || "").trim().toLowerCase();
-
   if(!s) return "";
   if(s === "enplus" || s === "en plus" || s === "en-plus") return "enplus";
   if(s === "dinplus" || s === "din plus" || s === "din-plus") return "dinplus";
   if(s === "sure") return "sure";
   if(s === "cpp") return "cpp";
   if(s === "kein zertifikat" || s === "ohne zertifikat" || s === "keine" || s === "kein") return "kein zertifikat";
-
   return s;
 }
 function normalizeCertificates(raw){
   const txt = String(raw || "").trim();
   if(!txt) return ["kein zertifikat"];
-
   return txt
     .split(",")
     .map(x => normalizeCertificateValue(x))
     .filter(Boolean);
 }
 function matchesCertificateFilter(firm){
-  const selected = document.getElementById("certificateFilter")?.value || "alle";
-  if(selected === "alle") return true;
+  const selected = getSelectedCertificates();
+  if(!selected.length) return true;
   const certs = Array.isArray(firm.certificates) ? firm.certificates : [];
-  return certs.includes(selected);
+  return selected.some(s => certs.includes(s));
 }
 function certificateLabel(v){
   if(v === "enplus") return "EnPlus";
@@ -1184,9 +1243,6 @@ function certificateLabel(v){
   return v || "—";
 }
 
-/* =========================
-   Geocode + Cache
-   ========================= */
 function normAddr(a){ return str(a).trim().replace(/\s+/g,' '); }
 
 function applyCacheCoordsOnly(){
@@ -1288,13 +1344,12 @@ async function geocodeAll(){
   updateLoadStatusCounts("✅ Fertig");
 }
 
-/* =========================
-   Marker
-   ========================= */
 function customerTriangleIcon(selected=false){
   const color = selected ? "var(--highlight)" : "var(--cust-tri)";
   const size = selected ? 24 : 18;
-  const shadow = selected ? "drop-shadow(0 0 0 4px var(--highlight-ring)) drop-shadow(0 4px 10px rgba(2,6,23,.28))" : "drop-shadow(0 3px 6px rgba(2,6,23,.25))";
+  const shadow = selected
+    ? "drop-shadow(0 0 0 4px var(--highlight-ring)) drop-shadow(0 4px 10px rgba(2,6,23,.28))"
+    : "drop-shadow(0 3px 6px rgba(2,6,23,.25))";
 
   return L.divIcon({
     html:`<div style="
@@ -1327,23 +1382,18 @@ function renderMarkers(){
 
   const inputs = getInputs();
   const outline = document.body.classList.contains("dark") ? "rgba(229,231,235,.9)" : "rgba(15,23,42,.9)";
-  const highlight = getComputedStyle(document.body).getPropertyValue('--highlight').trim() || "#e11d48";
-  const highlightRing = getComputedStyle(document.body).getPropertyValue('--highlight-ring').trim() || "rgba(225,29,72,.22)";
+  const highlight = getComputedStyle(document.body).getPropertyValue("--highlight").trim() || "#e11d48";
+  const highlightRing = getComputedStyle(document.body).getPropertyValue("--highlight-ring").trim() || "rgba(225,29,72,.22)";
 
   customers.forEach(c=>{
     if(!isFinite(c.lat)||!isFinite(c.lon)) return;
-
     const isSelected = selectedCustomer && selectedCustomer.id === c.id;
 
     const m = L.marker([c.lat,c.lon], {icon: customerTriangleIcon(isSelected)}).addTo(map);
 
     if(isSelected){
       const ring = L.circleMarker([c.lat,c.lon], {
-        radius: 16,
-        color: highlight,
-        weight: 3,
-        fillColor: highlightRing,
-        fillOpacity: 0.25
+        radius:16,color:highlight,weight:3,fillColor:highlightRing,fillOpacity:0.25
       }).addTo(map);
       customerMarkers.push(ring);
     }
@@ -1368,20 +1418,16 @@ function renderMarkers(){
     const isSelected = selectedFirm && selectedFirm.id === f.id;
 
     const m = L.circleMarker([f.lat,f.lon], {
-      radius: isSelected ? 10 : 7,
-      color: isSelected ? highlight : outline,
-      weight: isSelected ? 4 : 2,
-      fillColor: fill,
-      fillOpacity: .9
+      radius:isSelected ? 10 : 7,
+      color:isSelected ? highlight : outline,
+      weight:isSelected ? 4 : 2,
+      fillColor:fill,
+      fillOpacity:.9
     }).addTo(map);
 
     if(isSelected){
       const ring = L.circleMarker([f.lat,f.lon], {
-        radius: 18,
-        color: highlight,
-        weight: 2,
-        fillColor: highlightRing,
-        fillOpacity: 0.18
+        radius:18,color:highlight,weight:2,fillColor:highlightRing,fillOpacity:0.18
       }).addTo(map);
       firmMarkers.push(ring);
     }
@@ -1402,16 +1448,12 @@ function renderMarkers(){
   updateLoadStatusCounts();
 }
 
-/* =========================
-   Firm popup
-   ========================= */
 function openFirmPriceAndNotePopup(firm, latlng){
   const product = document.getElementById("product").value;
 
   const currentOverride = priceOverrides?.[firm.id]?.[product];
   const currentPrice = isFinite(currentOverride) ? currentOverride : firm.base[product];
   const currentNote = (notesStore?.[firm.id] || "").trim();
-
   const certsText = (firm.certificates || []).map(certificateLabel).join(", ");
 
   const div = document.createElement("div");
@@ -1473,9 +1515,6 @@ function openFirmPriceAndNotePopup(firm, latlng){
   }, 30);
 }
 
-/* =========================
-   UI
-   ========================= */
 function initUI(){
   document.getElementById("btnGeo")?.addEventListener("click", geocodeAll);
   document.getElementById("btnCalc").addEventListener("click", calculate);
@@ -1499,16 +1538,6 @@ function initUI(){
   });
 
   document.getElementById("product").addEventListener("change", ()=>{
-    renderMarkers();
-    if(getOrigin()) calculate();
-  });
-
-  document.getElementById("certificateFilter").addEventListener("change", ()=>{
-    if(selectedFirm && !matchesCertificateFilter(selectedFirm)){
-      selectedFirm = null;
-      updateOriginKpi(null);
-      showOrdersForOrigin(null);
-    }
     renderMarkers();
     if(getOrigin()) calculate();
   });
@@ -1642,7 +1671,6 @@ function updateModeUI(){
   document.getElementById("zoneActionsMobile").style.display = (mode==="firmen") ? "grid" : "none";
 
   document.getElementById("kpiOriginLabel").textContent = (mode==="kunden") ? "Kunde" : "Firma";
-  document.getElementById("certificateWrapDesktop").style.display = (mode==="kunden") ? "" : "";
 }
 
 function applyThemeFromLS(){
@@ -1655,9 +1683,6 @@ function setLoadStatus(text){
   el.innerHTML = `<span class="dot"></span> ${esc(text)}`;
 }
 
-/* =========================
-   Selection
-   ========================= */
 function getSearchType(){ return document.getElementById("searchType")?.value || "kunden"; }
 function getOrigin(){ return (getSearchType()==="kunden") ? selectedCustomer : selectedFirm; }
 
@@ -1695,9 +1720,6 @@ function selectFirm(f){
   setTimeout(()=>map.invalidateSize(), 50);
 }
 
-/* =========================
-   Calculate
-   ========================= */
 function getInputs(){
   const factor = toNum(document.getElementById("factor").value);
   return {
@@ -1843,7 +1865,6 @@ async function calculate(){
 
   for(const row of results){
     const ent = row.entity;
-
     const certInfo = mode==="kunden"
       ? `<br><span class="small">Zertifikat: ${esc((ent.certificates||[]).map(certificateLabel).join(", ") || "—")}</span>`
       : "";
@@ -1885,13 +1906,11 @@ function countMargins(results, targetVk){
   }
   return counts;
 }
-
 function updateMiniKpis({good, mid, bad}){
   document.getElementById("miniGood").textContent = String(good ?? 0);
   document.getElementById("miniMid").textContent  = String(mid ?? 0);
   document.getElementById("miniBad").textContent  = String(bad ?? 0);
 }
-
 function makeBadge(row, targetVk){
   if(!isFinite(targetVk)) return `<span class="badge">Klick für Route</span>`;
   const m = row.marginPerT;
@@ -1901,9 +1920,6 @@ function makeBadge(row, targetVk){
   return `<span class="badge bad">${fmt(m)} €/t</span>`;
 }
 
-/* =========================
-   Routing + Detail
-   ========================= */
 function clearRoute(){
   if(routeLayer){
     try{ map.removeLayer(routeLayer); }catch(e){}
@@ -1955,7 +1971,7 @@ async function showRouteDetails(origin, target, baseRow){
     if(route.geometry && route.geometry.coordinates){
       const latlngs = route.geometry.coordinates.map(([lon, lat]) => [lat, lon]);
       routeLayer = L.polyline(latlngs, {
-        color: getComputedStyle(document.body).getPropertyValue('--route').trim() || "#2563eb",
+        color: getComputedStyle(document.body).getPropertyValue("--route").trim() || "#2563eb",
         weight: 5,
         opacity: 0.9
       }).addTo(map);
@@ -2036,9 +2052,6 @@ function showDetail(row){
   box.style.display="block";
 }
 
-/* =========================
-   Orders
-   ========================= */
 function showOrdersForOrigin(origin){
   const box = document.getElementById("ordersBox");
   const title = document.getElementById("ordersTitle");
@@ -2056,7 +2069,7 @@ function showOrdersForOrigin(origin){
       box.style.display = "none";
       return;
     }
-    title.textContent = `Aufträge`;
+    title.textContent = "Aufträge";
     listEl.innerHTML = list.slice(0,12).map(x=>`• ${esc(x.firma)} — ${fmt(x.anzahl,0)}x`).join("<br>");
   }else{
     const list = deliveriesByFirm.get(normText(origin.name)) || [];
@@ -2064,16 +2077,13 @@ function showOrdersForOrigin(origin){
       box.style.display = "none";
       return;
     }
-    title.textContent = `Aufträge`;
+    title.textContent = "Aufträge";
     listEl.innerHTML = list.slice(0,12).map(x=>`• ${esc(x.kunde)} — ${fmt(x.anzahl,0)}x`).join("<br>");
   }
 
   box.style.display = "block";
 }
 
-/* =========================
-   Panel drag
-   ========================= */
 function initPanelDragDesktopOnly(){
   const panel = document.getElementById("panel");
   const header = document.getElementById("panelHeader");
@@ -2111,9 +2121,6 @@ function initPanelDragDesktopOnly(){
   });
 }
 
-/* =========================
-   KPI
-   ========================= */
 function updateOriginKpi(origin){
   const mode = getSearchType();
   document.getElementById("kpiOriginLabel").textContent = (mode==="kunden") ? "Kunde" : "Firma";
@@ -2132,9 +2139,6 @@ function updateOriginKpi(origin){
   document.getElementById("kpiRoute").textContent = "—";
 }
 
-/* =========================
-   Helpers
-   ========================= */
 function isYes(v){
   const s = String(v ?? "").trim().toLowerCase();
   return s === "ja" || s === "yes" || s === "y" || s === "1" || s === "true" || s === "ok";
