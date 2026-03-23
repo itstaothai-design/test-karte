@@ -1308,19 +1308,34 @@ async function geocodeAddress(address){
 }
 
 function rebuildMissingNoCoords(){
-  missing.kunden = missing.kunden.filter(x => x.reason === "Keine Adresse");
-  missing.firmen = missing.firmen.filter(x => x.reason === "Keine Adresse");
+  const onlyAddressCustomers = missing.kunden.filter(x => x.reason === "Keine Adresse");
+  const onlyAddressFirms = missing.firmen.filter(x => x.reason === "Keine Adresse");
+
+  const newCustomerMissing = [];
+  const newFirmMissing = [];
 
   for(const c of customers){
     if(!isFinite(c.lat) || !isFinite(c.lon)){
-      addMissing("kunden", c.name, "Keine Koordinaten (noch nicht geocodet)", c.address);
+      newCustomerMissing.push({
+        name: c.name,
+        reason: "Keine Koordinaten (noch nicht geocodet)",
+        extra: c.address
+      });
     }
   }
+
   for(const f of firms){
     if(!isFinite(f.lat) || !isFinite(f.lon)){
-      addMissing("firmen", f.name, "Keine Koordinaten (noch nicht geocodet)", f.address);
+      newFirmMissing.push({
+        name: f.name,
+        reason: "Keine Koordinaten (noch nicht geocodet)",
+        extra: f.address
+      });
     }
   }
+
+  missing.kunden = [...onlyAddressCustomers, ...newCustomerMissing];
+  missing.firmen = [...onlyAddressFirms, ...newFirmMissing];
 }
 
 function updateLoadStatusCounts(prefix=""){
