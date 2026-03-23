@@ -34,6 +34,9 @@
 
       --good:#16a34a; --mid:#f59e0b; --bad:#dc2626;
       --route:#2563eb;
+
+      --highlight:#e11d48;
+      --highlight-ring:rgba(225,29,72,.22);
     }
 
     body.dark{
@@ -50,6 +53,9 @@
 
       --pill-bg:rgba(148,163,184,.10); --pill-border:rgba(148,163,184,.22);
       --route:#60a5fa;
+
+      --highlight:#fb7185;
+      --highlight-ring:rgba(251,113,133,.22);
     }
 
     html,body{height:100%;margin:0;background:var(--ui-bg); overscroll-behavior:none;}
@@ -94,6 +100,7 @@
     .field input::placeholder{color:var(--inp-ph)}
     .field input:focus,.field select:focus{border-color:var(--inp-focus); box-shadow:0 0 0 3px rgba(37,99,235,.12)}
     .w240{min-width:240px}
+    .w160{min-width:160px}
     .w140{min-width:140px}
 
     .btn{
@@ -375,6 +382,18 @@
     </select>
   </div>
 
+  <div class="field w160 desktopOnly" id="certificateWrapDesktop">
+    <label>Zertifikat</label>
+    <select id="certificateFilter">
+      <option value="alle">Alle Zertifikate</option>
+      <option value="enplus">EnPlus</option>
+      <option value="dinplus">DINplus</option>
+      <option value="sure">SURE</option>
+      <option value="cpp">CPP</option>
+      <option value="kein zertifikat">Kein Zertifikat</option>
+    </select>
+  </div>
+
   <div class="field w140 desktopOnly">
     <label>Farbschema</label>
     <select id="colorScheme">
@@ -448,6 +467,11 @@
     <div class="field">
       <label>Produkt</label>
       <select id="productMobile"></select>
+    </div>
+
+    <div class="field">
+      <label>Zertifikat</label>
+      <select id="certificateFilterMobile"></select>
     </div>
 
     <div class="field">
@@ -576,13 +600,13 @@ const CONFIG = {
   geocodeDelayMs: 1100
 };
 
-const LS_GEO_CACHE_KEY = "salesMap_geoCache_v11";
-const LS_PRICE_OVERRIDES_KEY = "salesMap_priceOverrides_v11";
-const LS_PANEL_POS_KEY = "salesMap_panelPos_v11";
-const LS_COLOR_SCHEME_KEY = "salesMap_colorScheme_v6";
-const LS_THEME_KEY = "salesMap_theme_v5";
-const LS_NOTES_KEY = "salesMap_notes_v1";
-const LS_ZONE_GEOJSON_KEY = "salesMap_zone_geojson_v1";
+const LS_GEO_CACHE_KEY = "salesMap_geoCache_v12";
+const LS_PRICE_OVERRIDES_KEY = "salesMap_priceOverrides_v12";
+const LS_PANEL_POS_KEY = "salesMap_panelPos_v12";
+const LS_COLOR_SCHEME_KEY = "salesMap_colorScheme_v7";
+const LS_THEME_KEY = "salesMap_theme_v6";
+const LS_NOTES_KEY = "salesMap_notes_v2";
+const LS_ZONE_GEOJSON_KEY = "salesMap_zone_geojson_v2";
 
 /* =========================
    Missing tracking
@@ -863,6 +887,7 @@ function initMobileUI(){
   syncMobileSelect("product", "productMobile");
   syncMobileSelect("colorScheme", "colorSchemeMobile");
   syncMobileSelect("searchType", "searchTypeMobile");
+  syncMobileSelect("certificateFilter", "certificateFilterMobile");
 
   syncMobileInput("radiusKm", "radiusKmMobile");
   syncMobileInput("qtyT", "qtyTMobile");
@@ -913,6 +938,7 @@ function initMobileUI(){
 function syncMobileSelect(masterId, mobileId){
   const master = document.getElementById(masterId);
   const mobile = document.getElementById(mobileId);
+  if(!master || !mobile) return;
 
   function copyOptions(){
     mobile.innerHTML = master.innerHTML;
@@ -1035,11 +1061,12 @@ async function loadFirms(){
     }
 
     const baseLose = toNum(r["preis"]);
-    const baseSack = toNum(r["sackwarenp"]);
+    const baseSack = toNum(r["sackwarenp"] ?? r["sackwarep"] ?? r["sackwarepreis"]);
     const baseInd  = toNum(r["industriewal"] ?? r["industrieware"] ?? r["industriewar"] ?? r["industriewa"]);
 
     const stand = getStandFromRow(r);
     const sackInfo = str(r["sackware"]).trim();
+    const certificateRaw = str(r["zertifikat"] ?? r["zertifikate"] ?? r["zertifikat(e)"]).trim();
 
     list.push({
       id:"F"+idx,
@@ -1048,6 +1075,8 @@ async function loadFirms(){
       base:{ lose: baseLose, sackware: baseSack, industrieware: baseInd },
       stand,
       sackInfo,
+      certificateRaw,
+      certificates: normalizeCertificates(certificateRaw),
       lat: NaN, lon: NaN,
       raw: r
     });
@@ -1114,6 +1143,45 @@ async function loadDeliveries(){
     deliveriesByCustomer = new Map();
     deliveriesByFirm = new Map();
   }
+}
+
+/* =========================
+   Certificates
+   ========================= */
+function normalizeCertificateValue(v){
+  const s = String(v || "").trim().toLowerCase();
+
+  if(!s) return "";
+  if(s === "enplus" || s === "en plus" || s === "en-plus") return "enplus";
+  if(s === "dinplus" || s === "din plus" || s === "din-plus") return "dinplus";
+  if(s === "sure") return "sure";
+  if(s === "cpp") return "cpp";
+  if(s === "kein zertifikat" || s === "ohne zertifikat" || s === "keine" || s === "kein") return "kein zertifikat";
+
+  return s;
+}
+function normalizeCertificates(raw){
+  const txt = String(raw || "").trim();
+  if(!txt) return ["kein zertifikat"];
+
+  return txt
+    .split(",")
+    .map(x => normalizeCertificateValue(x))
+    .filter(Boolean);
+}
+function matchesCertificateFilter(firm){
+  const selected = document.getElementById("certificateFilter")?.value || "alle";
+  if(selected === "alle") return true;
+  const certs = Array.isArray(firm.certificates) ? firm.certificates : [];
+  return certs.includes(selected);
+}
+function certificateLabel(v){
+  if(v === "enplus") return "EnPlus";
+  if(v === "dinplus") return "DINplus";
+  if(v === "sure") return "SURE";
+  if(v === "cpp") return "CPP";
+  if(v === "kein zertifikat") return "Kein Zertifikat";
+  return v || "—";
 }
 
 /* =========================
@@ -1223,8 +1291,23 @@ async function geocodeAll(){
 /* =========================
    Marker
    ========================= */
-function customerTriangleIcon(){
-  return L.divIcon({ html:`<div class="tri"></div>`, className:"", iconSize:[20,18], iconAnchor:[10,18] });
+function customerTriangleIcon(selected=false){
+  const color = selected ? "var(--highlight)" : "var(--cust-tri)";
+  const size = selected ? 24 : 18;
+  const shadow = selected ? "drop-shadow(0 0 0 4px var(--highlight-ring)) drop-shadow(0 4px 10px rgba(2,6,23,.28))" : "drop-shadow(0 3px 6px rgba(2,6,23,.25))";
+
+  return L.divIcon({
+    html:`<div style="
+      width:0;height:0;
+      border-left:${Math.round(size*0.55)}px solid transparent;
+      border-right:${Math.round(size*0.55)}px solid transparent;
+      border-bottom:${size}px solid ${color};
+      filter:${shadow};
+    "></div>`,
+    className:"",
+    iconSize:[size+6,size+6],
+    iconAnchor:[(size+6)/2,size+2]
+  });
 }
 function firmColorByProduct(product){
   const scheme = document.getElementById("colorScheme")?.value || "standard";
@@ -1244,10 +1327,26 @@ function renderMarkers(){
 
   const inputs = getInputs();
   const outline = document.body.classList.contains("dark") ? "rgba(229,231,235,.9)" : "rgba(15,23,42,.9)";
+  const highlight = getComputedStyle(document.body).getPropertyValue('--highlight').trim() || "#e11d48";
+  const highlightRing = getComputedStyle(document.body).getPropertyValue('--highlight-ring').trim() || "rgba(225,29,72,.22)";
 
   customers.forEach(c=>{
     if(!isFinite(c.lat)||!isFinite(c.lon)) return;
-    const m = L.marker([c.lat,c.lon], {icon: customerTriangleIcon()}).addTo(map);
+
+    const isSelected = selectedCustomer && selectedCustomer.id === c.id;
+
+    const m = L.marker([c.lat,c.lon], {icon: customerTriangleIcon(isSelected)}).addTo(map);
+
+    if(isSelected){
+      const ring = L.circleMarker([c.lat,c.lon], {
+        radius: 16,
+        color: highlight,
+        weight: 3,
+        fillColor: highlightRing,
+        fillOpacity: 0.25
+      }).addTo(map);
+      customerMarkers.push(ring);
+    }
 
     m.on("click", async ()=>{
       if(getSearchType()==="kunden"){
@@ -1263,10 +1362,29 @@ function renderMarkers(){
 
   firms.forEach(f=>{
     if(!isFinite(f.lat)||!isFinite(f.lon)) return;
+    if(!matchesCertificateFilter(f)) return;
+
     const fill = firmFillColor(f, inputs);
+    const isSelected = selectedFirm && selectedFirm.id === f.id;
+
     const m = L.circleMarker([f.lat,f.lon], {
-      radius:7,color:outline,weight:2,fillColor:fill,fillOpacity:.9
+      radius: isSelected ? 10 : 7,
+      color: isSelected ? highlight : outline,
+      weight: isSelected ? 4 : 2,
+      fillColor: fill,
+      fillOpacity: .9
     }).addTo(map);
+
+    if(isSelected){
+      const ring = L.circleMarker([f.lat,f.lon], {
+        radius: 18,
+        color: highlight,
+        weight: 2,
+        fillColor: highlightRing,
+        fillOpacity: 0.18
+      }).addTo(map);
+      firmMarkers.push(ring);
+    }
 
     m.on("click", async ()=>{
       if(getSearchType()==="firmen"){
@@ -1294,11 +1412,14 @@ function openFirmPriceAndNotePopup(firm, latlng){
   const currentPrice = isFinite(currentOverride) ? currentOverride : firm.base[product];
   const currentNote = (notesStore?.[firm.id] || "").trim();
 
+  const certsText = (firm.certificates || []).map(certificateLabel).join(", ");
+
   const div = document.createElement("div");
   div.className="rcard";
   div.innerHTML = `
     <div class="h">${esc(firm.name)}</div>
     <div class="small">${esc(firm.address)}</div>
+    <div class="small" style="margin-top:4px;">Zertifikat: <b>${esc(certsText || "—")}</b></div>
 
     <div class="row2">
       <div class="small">Preis für <b>${esc(productLabel(product))}</b> (€/t)</div>
@@ -1365,6 +1486,7 @@ function initUI(){
   document.getElementById("btnTheme").addEventListener("click", ()=>{
     document.body.classList.toggle("dark");
     saveLS(LS_THEME_KEY, document.body.classList.contains("dark") ? "dark" : "light");
+    renderMarkers();
   });
 
   const schemeSel = document.getElementById("colorScheme");
@@ -1377,6 +1499,16 @@ function initUI(){
   });
 
   document.getElementById("product").addEventListener("change", ()=>{
+    renderMarkers();
+    if(getOrigin()) calculate();
+  });
+
+  document.getElementById("certificateFilter").addEventListener("change", ()=>{
+    if(selectedFirm && !matchesCertificateFilter(selectedFirm)){
+      selectedFirm = null;
+      updateOriginKpi(null);
+      showOrdersForOrigin(null);
+    }
     renderMarkers();
     if(getOrigin()) calculate();
   });
@@ -1447,7 +1579,8 @@ function initUI(){
   });
 
   function getActiveList(){
-    return getSearchType()==="kunden" ? customers : firms;
+    if(getSearchType()==="kunden") return customers;
+    return firms.filter(matchesCertificateFilter);
   }
   function bestMatch(q){
     if(!q) return null;
@@ -1480,9 +1613,13 @@ function initUI(){
 
     const tag = getSearchType()==="kunden" ? "Kunde" : "Firma";
     for(const x of out){
+      const certInfo = getSearchType()==="firmen"
+        ? `<div class="tag">${esc(tag)} · ${esc((x.certificates||[]).map(certificateLabel).join(", ") || "—")}</div>`
+        : `<div class="tag">${esc(tag)}</div>`;
+
       const div=document.createElement("div");
       div.className="item";
-      div.innerHTML = `<div class="name">${esc(x.name)}</div><div class="addr">${esc(x.address)}</div><div class="tag">${esc(tag)}</div>`;
+      div.innerHTML = `<div class="name">${esc(x.name)}</div><div class="addr">${esc(x.address)}</div>${certInfo}`;
       div.addEventListener("click", ()=>{
         selectEntity(x);
         ac.style.display="none";
@@ -1505,6 +1642,7 @@ function updateModeUI(){
   document.getElementById("zoneActionsMobile").style.display = (mode==="firmen") ? "grid" : "none";
 
   document.getElementById("kpiOriginLabel").textContent = (mode==="kunden") ? "Kunde" : "Firma";
+  document.getElementById("certificateWrapDesktop").style.display = (mode==="kunden") ? "" : "";
 }
 
 function applyThemeFromLS(){
@@ -1528,9 +1666,10 @@ function selectCustomer(c){
   selectedFirm = null;
   updateOriginKpi(c);
   showOrdersForOrigin(c);
+  renderMarkers();
 
   if(isFinite(c.lat)&&isFinite(c.lon)){
-    map.setView([c.lat,c.lon], Math.max(map.getZoom(), 7), {animate:true});
+    map.setView([c.lat,c.lon], Math.max(map.getZoom(), 8), {animate:true});
   }
   const panel = document.getElementById("panel");
   panel.classList.remove("hidden");
@@ -1544,9 +1683,10 @@ function selectFirm(f){
   selectedCustomer = null;
   updateOriginKpi(f);
   showOrdersForOrigin(f);
+  renderMarkers();
 
   if(isFinite(f.lat)&&isFinite(f.lon)){
-    map.setView([f.lat,f.lon], Math.max(map.getZoom(), 7), {animate:true});
+    map.setView([f.lat,f.lon], Math.max(map.getZoom(), 8), {animate:true});
   }
   const panel = document.getElementById("panel");
   panel.classList.remove("hidden");
@@ -1603,6 +1743,7 @@ async function calculate(){
 
     for(const f of firms){
       if(!isFinite(f.lat)||!isFinite(f.lon)) continue;
+      if(!matchesCertificateFilter(f)) continue;
 
       const kmAir = haversineKm(origin.lat, origin.lon, f.lat, f.lon);
       if(kmAir > radiusKm) continue;
@@ -1703,11 +1844,16 @@ async function calculate(){
   for(const row of results){
     const ent = row.entity;
 
+    const certInfo = mode==="kunden"
+      ? `<br><span class="small">Zertifikat: ${esc((ent.certificates||[]).map(certificateLabel).join(", ") || "—")}</span>`
+      : "";
+
     const tr = document.createElement("tr");
     tr.innerHTML = `
       <td>
         <b>${esc(ent.name)}</b><br>
         <span class="small">${esc(ent.address)} · Basis ${fmt(row.base)} €/t · Fracht ${fmt(row.freightPerT)} €/t</span>
+        ${certInfo}
       </td>
       <td>${fmt(row.calcKm,0)}</td>
       <td>
@@ -1859,6 +2005,7 @@ function showDetail(row){
 
   const note = notesStore?.[row.entity.id] || "";
   const marginTotal = isFinite(row.marginPerT) ? row.marginPerT * qtyT : NaN;
+  const certsText = row.entity.certificates ? row.entity.certificates.map(certificateLabel).join(", ") : "—";
 
   grid.innerHTML = `
     <div class="kv"><span class="k">Name</span><span class="v">${esc(row.entity.name)}</span></div>
@@ -1879,8 +2026,11 @@ function showDetail(row){
     <div class="kv"><span class="k">Marge / t</span><span class="v">${isFinite(row.marginPerT) ? fmt(row.marginPerT) + " €/t" : "—"}</span></div>
     <div class="kv"><span class="k">Marge gesamt</span><span class="v">${isFinite(marginTotal) ? fmt(marginTotal) + " €" : "—"}</span></div>
 
-    <div class="kv"><span class="k">Notiz</span><span class="v">${note ? esc(note) : "—"}</span></div>
+    <div class="kv"><span class="k">Zertifikat</span><span class="v">${esc(certsText)}</span></div>
     <div class="kv"><span class="k">Routing</span><span class="v">${isFinite(row.durationMin) ? "echte Strecke" : "Luftlinie-Fallback"}</span></div>
+
+    <div class="kv"><span class="k">Notiz</span><span class="v">${note ? esc(note) : "—"}</span></div>
+    <div class="kv"><span class="k">Stand</span><span class="v">${esc(row.entity.stand || "—")}</span></div>
   `;
 
   box.style.display="block";
