@@ -1265,77 +1265,36 @@ async function geocodeAddress(address){
   }
 
   const url = "https://nominatim.openstreetmap.org/search?format=json&limit=1&q=" + encodeURIComponent(key);
-
   try{
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 12000);
-
-    const res = await fetch(url, {
-      method: "GET",
-      headers: {
-        "Accept": "application/json"
-      },
-      signal: controller.signal
-    });
-
-    clearTimeout(timeout);
-
-    if(!res.ok){
-      console.warn("Geocode HTTP Fehler:", res.status, address);
-      return null;
-    }
-
+    const res = await fetch(url, { headers: { "Accept":"application/json" } });
     const data = await res.json();
-
-    if(Array.isArray(data) && data.length){
+    if(data && data[0]){
       const lat = parseFloat(data[0].lat);
       const lon = parseFloat(data[0].lon);
-
       if(isFinite(lat) && isFinite(lon)){
-        geoCache[key] = { lat, lon, ts: Date.now() };
+        geoCache[key] = {lat, lon, ts: Date.now()};
         saveLS(LS_GEO_CACHE_KEY, geoCache);
-        return { lat, lon };
+        return {lat, lon};
       }
     }
-
-    console.warn("Keine Geocode-Treffer für:", address);
-    return null;
-
-  }catch(e){
-    console.warn("Geocode Fehler für:", address, e);
-    return null;
-  }
+  }catch(e){}
+  return null;
 }
 
 function rebuildMissingNoCoords(){
-  const onlyAddressCustomers = missing.kunden.filter(x => x.reason === "Keine Adresse");
-  const onlyAddressFirms = missing.firmen.filter(x => x.reason === "Keine Adresse");
-
-  const newCustomerMissing = [];
-  const newFirmMissing = [];
+  missing.kunden = missing.kunden.filter(x => x.reason === "Keine Adresse");
+  missing.firmen = missing.firmen.filter(x => x.reason === "Keine Adresse");
 
   for(const c of customers){
     if(!isFinite(c.lat) || !isFinite(c.lon)){
-      newCustomerMissing.push({
-        name: c.name,
-        reason: "Keine Koordinaten (noch nicht geocodet)",
-        extra: c.address
-      });
+      addMissing("kunden", c.name, "Keine Koordinaten (noch nicht geocodet)", c.address);
     }
   }
-
   for(const f of firms){
     if(!isFinite(f.lat) || !isFinite(f.lon)){
-      newFirmMissing.push({
-        name: f.name,
-        reason: "Keine Koordinaten (noch nicht geocodet)",
-        extra: f.address
-      });
+      addMissing("firmen", f.name, "Keine Koordinaten (noch nicht geocodet)", f.address);
     }
   }
-
-  missing.kunden = [...onlyAddressCustomers, ...newCustomerMissing];
-  missing.firmen = [...onlyAddressFirms, ...newFirmMissing];
 }
 
 function updateLoadStatusCounts(prefix=""){
@@ -1355,51 +1314,34 @@ async function geocodeAll(){
 
   let doneC = customers.filter(c=>isFinite(c.lat)&&isFinite(c.lon)).length;
   let doneF = firms.filter(f=>isFinite(f.lat)&&isFinite(f.lon)).length;
-  let failC = 0;
-  let failF = 0;
 
-  setLoadStatus(`Geocoding läuft … Kunden ${doneC}/${totalC} · Firmen ${doneF}/${totalF}`);
+  setLoadStatus(`Kunden ${doneC}/${totalC} · Firmen ${doneF}/${totalF}`);
 
   for(const c of customers){
     if(isFinite(c.lat) && isFinite(c.lon)) continue;
-
     const coords = await geocodeAddress(c.address);
     if(coords){
-      c.lat = coords.lat;
-      c.lon = coords.lon;
+      c.lat = coords.lat; c.lon = coords.lon;
       doneC++;
-    }else{
-      failC++;
+      setLoadStatus(`Kunden ${doneC}/${totalC} · Firmen ${doneF}/${totalF}`);
     }
-
-    setLoadStatus(`Geocoding … Kunden ${doneC}/${totalC} · Firmen ${doneF}/${totalF} · Fehler ${failC + failF}`);
-    await sleep(1200);
+    await sleep(CONFIG.geocodeDelayMs);
   }
 
   for(const f of firms){
     if(isFinite(f.lat) && isFinite(f.lon)) continue;
-
     const coords = await geocodeAddress(f.address);
     if(coords){
-      f.lat = coords.lat;
-      f.lon = coords.lon;
+      f.lat = coords.lat; f.lon = coords.lon;
       doneF++;
-    }else{
-      failF++;
+      setLoadStatus(`Kunden ${doneC}/${totalC} · Firmen ${doneF}/${totalF}`);
     }
-
-    setLoadStatus(`Geocoding … Kunden ${doneC}/${totalC} · Firmen ${doneF}/${totalF} · Fehler ${failC + failF}`);
-    await sleep(1200);
+    await sleep(CONFIG.geocodeDelayMs);
   }
 
   renderMarkers();
   updateOriginKpi(getOrigin());
-  updateLoadStatusCounts(`✅ Fertig · Fehler ${failC + failF}`);
-
-  alert(`Geocoding fertig
-Kunden: ${doneC}/${totalC}
-Firmen: ${doneF}/${totalF}
-Fehler: ${failC + failF}`);
+  updateLoadStatusCounts("✅ Fertig");
 }
 
 function customerTriangleIcon(selected=false){
