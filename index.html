@@ -1265,20 +1265,46 @@ async function geocodeAddress(address){
   }
 
   const url = "https://nominatim.openstreetmap.org/search?format=json&limit=1&q=" + encodeURIComponent(key);
+
   try{
-    const res = await fetch(url, { headers: { "Accept":"application/json" } });
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 12000);
+
+    const res = await fetch(url, {
+      method: "GET",
+      headers: {
+        "Accept": "application/json"
+      },
+      signal: controller.signal
+    });
+
+    clearTimeout(timeout);
+
+    if(!res.ok){
+      console.warn("Geocode HTTP Fehler:", res.status, address);
+      return null;
+    }
+
     const data = await res.json();
-    if(data && data[0]){
+
+    if(Array.isArray(data) && data.length){
       const lat = parseFloat(data[0].lat);
       const lon = parseFloat(data[0].lon);
+
       if(isFinite(lat) && isFinite(lon)){
-        geoCache[key] = {lat, lon, ts: Date.now()};
+        geoCache[key] = { lat, lon, ts: Date.now() };
         saveLS(LS_GEO_CACHE_KEY, geoCache);
-        return {lat, lon};
+        return { lat, lon };
       }
     }
-  }catch(e){}
-  return null;
+
+    console.warn("Keine Geocode-Treffer für:", address);
+    return null;
+
+  }catch(e){
+    console.warn("Geocode Fehler für:", address, e);
+    return null;
+  }
 }
 
 function rebuildMissingNoCoords(){
@@ -1314,34 +1340,51 @@ async function geocodeAll(){
 
   let doneC = customers.filter(c=>isFinite(c.lat)&&isFinite(c.lon)).length;
   let doneF = firms.filter(f=>isFinite(f.lat)&&isFinite(f.lon)).length;
+  let failC = 0;
+  let failF = 0;
 
-  setLoadStatus(`Kunden ${doneC}/${totalC} · Firmen ${doneF}/${totalF}`);
+  setLoadStatus(`Geocoding läuft … Kunden ${doneC}/${totalC} · Firmen ${doneF}/${totalF}`);
 
   for(const c of customers){
     if(isFinite(c.lat) && isFinite(c.lon)) continue;
+
     const coords = await geocodeAddress(c.address);
     if(coords){
-      c.lat = coords.lat; c.lon = coords.lon;
+      c.lat = coords.lat;
+      c.lon = coords.lon;
       doneC++;
-      setLoadStatus(`Kunden ${doneC}/${totalC} · Firmen ${doneF}/${totalF}`);
+    }else{
+      failC++;
     }
-    await sleep(CONFIG.geocodeDelayMs);
+
+    setLoadStatus(`Geocoding … Kunden ${doneC}/${totalC} · Firmen ${doneF}/${totalF} · Fehler ${failC + failF}`);
+    await sleep(1200);
   }
 
   for(const f of firms){
     if(isFinite(f.lat) && isFinite(f.lon)) continue;
+
     const coords = await geocodeAddress(f.address);
     if(coords){
-      f.lat = coords.lat; f.lon = coords.lon;
+      f.lat = coords.lat;
+      f.lon = coords.lon;
       doneF++;
-      setLoadStatus(`Kunden ${doneC}/${totalC} · Firmen ${doneF}/${totalF}`);
+    }else{
+      failF++;
     }
-    await sleep(CONFIG.geocodeDelayMs);
+
+    setLoadStatus(`Geocoding … Kunden ${doneC}/${totalC} · Firmen ${doneF}/${totalF} · Fehler ${failC + failF}`);
+    await sleep(1200);
   }
 
   renderMarkers();
   updateOriginKpi(getOrigin());
-  updateLoadStatusCounts("✅ Fertig");
+  updateLoadStatusCounts(`✅ Fertig · Fehler ${failC + failF}`);
+
+  alert(`Geocoding fertig
+Kunden: ${doneC}/${totalC}
+Firmen: ${doneF}/${totalF}
+Fehler: ${failC + failF}`);
 }
 
 function customerTriangleIcon(selected=false){
