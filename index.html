@@ -25,7 +25,7 @@
       --btn-bg:rgba(15,23,42,.06); --btn-border:rgba(15,23,42,.14); --btn-text:#0f172a;
       --btn-primary:#22c55e; --btn-primary-text:#052e16;
 
-      --cust-tri:#4c1d95;
+      --cust-tri:#5b21b6;
 
       --popup-bg:#ffffff; --popup-text:#0f172a; --popup-border:rgba(15,23,42,.12);
 
@@ -378,7 +378,7 @@
     </select>
   </div>
 
-  <div class="field w160 desktopOnly" id="certificateWrapDesktop">
+  <div class="field w160 desktopOnly">
     <label>Zertifikat</label>
     <div class="multiSelect" id="certificateMulti">
       <button type="button" class="multiSelectBtn" id="certificateBtn">Alle Zertifikate</button>
@@ -507,8 +507,6 @@
       <button class="btn" id="btnGeoMobile">Geocoden</button>
     </div>
   </div>
-
-  <div class="small">Tip: Ergebnis-Panel unten antippen = ein/ausklappen.</div>
 </aside>
 
 <div id="missPanel" class="missPanel hidden">
@@ -587,12 +585,12 @@ const CONFIG = {
   geocodeDelayMs: 1100
 };
 
-const LS_GEO_CACHE_KEY = "salesMap_geoCache_v15";
-const LS_PRICE_OVERRIDES_KEY = "salesMap_priceOverrides_v15";
-const LS_PANEL_POS_KEY = "salesMap_panelPos_v15";
-const LS_THEME_KEY = "salesMap_theme_v9";
-const LS_NOTES_KEY = "salesMap_notes_v5";
-const LS_ZONE_GEOJSON_KEY = "salesMap_zone_geojson_v5";
+const LS_GEO_CACHE_KEY = "salesMap_geoCache_v16";
+const LS_PRICE_OVERRIDES_KEY = "salesMap_priceOverrides_v16";
+const LS_PANEL_POS_KEY = "salesMap_panelPos_v16";
+const LS_THEME_KEY = "salesMap_theme_v10";
+const LS_NOTES_KEY = "salesMap_notes_v6";
+const LS_ZONE_GEOJSON_KEY = "salesMap_zone_geojson_v6";
 
 const missing = { firmen: [], kunden: [], auftraege: [] };
 let activeMissTab = "firmen";
@@ -619,7 +617,7 @@ let drawControl = null;
 
 let lastResults = [];
 let currentFocusedRow = null;
-let colorizedResultsById = new Map();
+let markerStateById = new Map();
 let hasCalculatedOnce = false;
 
 window.addEventListener("load", ()=>init().catch(err=>{
@@ -663,6 +661,31 @@ async function init(){
   updateLoadStatusCounts("✅ geladen");
   updateMiniKpis({good:0, mid:0, bad:0});
   updateModeUI();
+}
+
+function applyResponsiveLayout(){
+  isMobile = window.matchMedia("(max-width: 760px)").matches;
+
+  const panel = document.getElementById("panel");
+  panel.classList.toggle("mobileSheet", isMobile);
+
+  if(isMobile){
+    panel.style.left = "";
+    panel.style.top = "";
+    panel.style.right = "";
+  }else{
+    const pos = loadLS(LS_PANEL_POS_KEY, null);
+    if(pos && isFinite(pos.x) && isFinite(pos.y)){
+      panel.style.left = pos.x+"px";
+      panel.style.top  = pos.y+"px";
+      panel.style.right = "auto";
+    }else{
+      panel.style.left = "";
+      panel.style.top  = "";
+      panel.style.right = "12px";
+    }
+    panel.classList.remove("collapsed");
+  }
 }
 
 function addMissing(tab, name, reason, extra){
@@ -711,31 +734,6 @@ function exportMissingCsv(){
   URL.revokeObjectURL(a.href);
 }
 
-function applyResponsiveLayout(){
-  isMobile = window.matchMedia("(max-width: 760px)").matches;
-
-  const panel = document.getElementById("panel");
-  panel.classList.toggle("mobileSheet", isMobile);
-
-  if(isMobile){
-    panel.style.left = "";
-    panel.style.top = "";
-    panel.style.right = "";
-  }else{
-    const pos = loadLS(LS_PANEL_POS_KEY, null);
-    if(pos && isFinite(pos.x) && isFinite(pos.y)){
-      panel.style.left = pos.x+"px";
-      panel.style.top  = pos.y+"px";
-      panel.style.right = "auto";
-    }else{
-      panel.style.left = "";
-      panel.style.top  = "";
-      panel.style.right = "12px";
-    }
-    panel.classList.remove("collapsed");
-  }
-}
-
 function initMissingUI(){
   document.getElementById("loadStatus")?.addEventListener("click", ()=>{
     document.getElementById("missPanel").classList.toggle("hidden");
@@ -759,17 +757,9 @@ function initZoneTools(){
   map.addLayer(zoneGroup);
 
   drawControl = new L.Control.Draw({
-    edit: {
-      featureGroup: zoneGroup,
-      edit: true,
-      remove: true
-    },
+    edit: { featureGroup: zoneGroup, edit: true, remove: true },
     draw: {
-      polygon: {
-        allowIntersection: false,
-        showArea: true,
-        shapeOptions: { weight: 3 }
-      },
+      polygon: { allowIntersection: false, showArea: true, shapeOptions: { weight: 3 } },
       rectangle: false,
       circle: false,
       circlemarker: false,
@@ -818,8 +808,7 @@ function saveZoneToLS(){
     return;
   }
   try{
-    const gj = zoneLayer.toGeoJSON();
-    saveLS(LS_ZONE_GEOJSON_KEY, gj);
+    saveLS(LS_ZONE_GEOJSON_KEY, zoneLayer.toGeoJSON());
   }catch(e){}
 }
 function startDrawZone(){
@@ -850,13 +839,9 @@ function pointInZone(lat, lon){
 }
 
 function initMobileUI(){
-  const btnMenu = document.getElementById("btnMenu");
-  const backdrop = document.getElementById("drawerBackdrop");
-  const btnClose = document.getElementById("drawerClose");
-
-  btnMenu.addEventListener("click", ()=>toggleDrawer());
-  btnClose.addEventListener("click", ()=>closeDrawer());
-  backdrop.addEventListener("click", ()=>closeDrawer());
+  document.getElementById("btnMenu").addEventListener("click", ()=>toggleDrawer());
+  document.getElementById("drawerClose").addEventListener("click", ()=>closeDrawer());
+  document.getElementById("drawerBackdrop").addEventListener("click", ()=>closeDrawer());
 
   syncMobileSelect("product", "productMobile");
   syncMobileSelect("searchType", "searchTypeMobile");
@@ -900,9 +885,8 @@ function initMobileUI(){
     clearZone();
   });
 
-  const header = document.getElementById("panelHeader");
-  header.addEventListener("click", (e)=>{
-    if(e.target && (e.target.id === "closePanel")) return;
+  document.getElementById("panelHeader").addEventListener("click", (e)=>{
+    if(e.target && e.target.id === "closePanel") return;
     if(!isMobile) return;
     document.getElementById("panel").classList.toggle("collapsed");
   });
@@ -930,13 +914,8 @@ function syncMobileInput(masterId, mobileId){
   if(!master || !mobile) return;
 
   mobile.value = master.value;
-
-  master.addEventListener("input", ()=>{
-    if(mobile.value !== master.value) mobile.value = master.value;
-  });
-  mobile.addEventListener("input", ()=>{
-    if(master.value !== mobile.value) master.value = mobile.value;
-  });
+  master.addEventListener("input", ()=>{ if(mobile.value !== master.value) mobile.value = master.value; });
+  mobile.addEventListener("input", ()=>{ if(master.value !== mobile.value) master.value = mobile.value; });
 }
 function openDrawer(){
   document.getElementById("drawer").classList.add("open");
@@ -958,31 +937,20 @@ function initCertificateFilters(){
   initMultiSelect("certificateMultiMobile", "certificateBtnMobile", "certificateMenuMobile", true);
 
   document.addEventListener("click", (e)=>{
-    const blocks = [
-      document.getElementById("certificateMulti"),
-      document.getElementById("certificateMultiMobile")
-    ];
-    const menus = [
-      document.getElementById("certificateMenu"),
-      document.getElementById("certificateMenuMobile")
-    ];
+    const blocks = [document.getElementById("certificateMulti"), document.getElementById("certificateMultiMobile")];
+    const menus = [document.getElementById("certificateMenu"), document.getElementById("certificateMenuMobile")];
     let inside = false;
-    for(const b of blocks){
-      if(b && b.contains(e.target)) inside = true;
-    }
-    if(!inside){
-      menus.forEach(m=>m && m.classList.remove("open"));
-    }
+    for(const b of blocks) if(b && b.contains(e.target)) inside = true;
+    if(!inside) menus.forEach(m=>m && m.classList.remove("open"));
   });
 
   updateCertificateButtonText(false);
   updateCertificateButtonText(true);
 }
 function initMultiSelect(wrapperId, btnId, menuId, isMobileMenu){
-  const wrap = document.getElementById(wrapperId);
   const btn = document.getElementById(btnId);
   const menu = document.getElementById(menuId);
-  if(!wrap || !btn || !menu) return;
+  if(!btn || !menu) return;
 
   btn.addEventListener("click", (e)=>{
     e.stopPropagation();
@@ -1003,8 +971,8 @@ function initMultiSelect(wrapperId, btnId, menuId, isMobileMenu){
         showOrdersForOrigin(null);
       }
 
+      clearMarkerState();
       renderMarkers();
-
       const origin = getOrigin();
       if(origin) calculate();
     });
@@ -1015,11 +983,8 @@ function syncCertificateChecks(source){
   const mobileChecks  = Array.from(document.querySelectorAll("#certificateMenuMobile input[type='checkbox']"));
   const from = source === "mobile" ? mobileChecks : desktopChecks;
   const to   = source === "mobile" ? desktopChecks : mobileChecks;
-
   const values = new Map(from.map(cb=>[cb.value, cb.checked]));
-  to.forEach(cb=>{
-    cb.checked = !!values.get(cb.value);
-  });
+  to.forEach(cb=>{ cb.checked = !!values.get(cb.value); });
 }
 function getSelectedCertificates(){
   const checks = Array.from(document.querySelectorAll("#certificateMenu input[type='checkbox']"));
@@ -1028,15 +993,8 @@ function getSelectedCertificates(){
 function updateCertificateButtonText(isMobileMenu){
   const btn = document.getElementById(isMobileMenu ? "certificateBtnMobile" : "certificateBtn");
   if(!btn) return;
-
   const selected = getSelectedCertificates();
-  if(!selected.length){
-    btn.textContent = "Alle Zertifikate";
-    return;
-  }
-
-  const labels = selected.map(certificateLabel);
-  btn.textContent = labels.join(", ");
+  btn.textContent = !selected.length ? "Alle Zertifikate" : selected.map(certificateLabel).join(", ");
 }
 
 function parseCsv(url){
@@ -1075,14 +1033,11 @@ function getRowValues(r){
     if(k === "__parsed_extra") continue;
     vals.push(r[k]);
   }
-  if(Array.isArray(r?.__parsed_extra)){
-    vals.push(...r.__parsed_extra);
-  }
+  if(Array.isArray(r?.__parsed_extra)) vals.push(...r.__parsed_extra);
   return vals;
 }
 function rowValueByIndex(r, zeroBasedIndex){
-  const vals = getRowValues(r);
-  return vals[zeroBasedIndex];
+  return getRowValues(r)[zeroBasedIndex];
 }
 function pickRowField(r, keys=[], fallbackIndex=null){
   for(const k of keys){
@@ -1091,9 +1046,7 @@ function pickRowField(r, keys=[], fallbackIndex=null){
       if(v !== "") return v;
     }
   }
-  if(Number.isInteger(fallbackIndex)){
-    return str(rowValueByIndex(r, fallbackIndex)).trim();
-  }
+  if(Number.isInteger(fallbackIndex)) return str(rowValueByIndex(r, fallbackIndex)).trim();
   return "";
 }
 function getCustomerAcceptsFromRow(r){
@@ -1117,14 +1070,12 @@ async function loadCustomers(){
       return;
     }
 
-    const accepts = getCustomerAcceptsFromRow(r);
-
     list.push({
       id:"C"+idx,
       name: name || ort || "Kunde",
       address: ort,
       lat: NaN, lon: NaN,
-      accepts,
+      accepts: getCustomerAcceptsFromRow(r),
       raw: r
     });
   });
@@ -1145,23 +1096,19 @@ async function loadFirms(){
       return;
     }
 
-    const baseLose = toNum(r["preis"]);
-    const baseSack = toNum(r["sackwarenp"] ?? r["sackwarep"] ?? r["sackwarepreis"]);
-    const baseInd  = toNum(r["industriewal"] ?? r["industrieware"] ?? r["industriewar"] ?? r["industriewa"]);
-
-    const stand = getStandFromRow(r);
-    const sackInfo = str(r["sackware"]).trim();
-    const certificateRaw = str(r["zertifikat"] ?? r["zertifikate"] ?? r["zertifikat(e)"]).trim();
-
     list.push({
       id:"F"+idx,
       name: name || "Firma",
       address: ort,
-      base:{ lose: baseLose, sackware: baseSack, industrieware: baseInd },
-      stand,
-      sackInfo,
-      certificateRaw,
-      certificates: normalizeCertificates(certificateRaw),
+      base:{
+        lose: toNum(r["preis"]),
+        sackware: toNum(r["sackwarenp"] ?? r["sackwarep"] ?? r["sackwarepreis"]),
+        industrieware: toNum(r["industriewal"] ?? r["industrieware"] ?? r["industriewar"] ?? r["industriewa"])
+      },
+      stand: getStandFromRow(r),
+      sackInfo: str(r["sackware"]).trim(),
+      certificateRaw: str(r["zertifikat"] ?? r["zertifikate"] ?? r["zertifikat(e)"]).trim(),
+      certificates: normalizeCertificates(str(r["zertifikat"] ?? r["zertifikate"] ?? r["zertifikat(e)"]).trim()),
       lat: NaN, lon: NaN,
       raw: r
     });
@@ -1187,11 +1134,9 @@ async function loadDeliveries(){
     const firmSet = new Set(firms.map(f => normText(f.name)));
 
     for(const d of deliveriesAgg){
-      const k = normText(d.kunde);
-      const f = normText(d.firma);
       const problems = [];
-      if(!custSet.has(k)) problems.push(`Kunde nicht gefunden: "${d.kunde}"`);
-      if(!firmSet.has(f)) problems.push(`Firma nicht gefunden: "${d.firma}"`);
+      if(!custSet.has(normText(d.kunde))) problems.push(`Kunde nicht gefunden: "${d.kunde}"`);
+      if(!firmSet.has(normText(d.firma))) problems.push(`Firma nicht gefunden: "${d.firma}"`);
       if(!Number.isFinite(d.anzahl) || d.anzahl <= 0) problems.push(`Anzahl ungültig: "${d.anzahl}"`);
       if(problems.length){
         addMissing("auftraege", `${d.kunde} → ${d.firma}`, "Match-Problem", `Zeile: ${d._row}\n${problems.join("\n")}`);
@@ -1234,7 +1179,6 @@ function normalizeCertificateValue(v){
   let s = String(v || "").trim().toLowerCase();
   if(!s) return "";
   s = s.replace(/\s+/g, " ");
-
   if(["enplus","en plus","en-plus"].includes(s)) return "enplus";
   if(["dinplus","din plus","din-plus"].includes(s)) return "dinplus";
   if(s === "sure") return "sure";
@@ -1245,22 +1189,15 @@ function normalizeCertificateValue(v){
 function normalizeCertificates(raw){
   const txt = String(raw || "").trim();
   if(!txt) return ["kein zertifikat"];
-
-  const normalized = txt
-    .split(/[,;/|]+/)
-    .map(x => normalizeCertificateValue(x))
-    .filter(Boolean);
-
-  if(!normalized.length) return ["kein zertifikat"];
-
-  return [...new Set(normalized)];
+  const normalized = txt.split(/[,;/|]+/).map(x => normalizeCertificateValue(x)).filter(Boolean);
+  return normalized.length ? [...new Set(normalized)] : ["kein zertifikat"];
 }
 function matchesCertificateFilter(firm){
   const selected = getSelectedCertificates();
   if(!selected.length) return true;
 
-  const certs = Array.isArray(firm?.certificates) ? firm.certificates.map(normalizeCertificateValue) : [];
-  if(!certs.length) certs.push("kein zertifikat");
+  let certs = Array.isArray(firm?.certificates) ? firm.certificates.map(normalizeCertificateValue) : [];
+  if(!certs.length) certs = ["kein zertifikat"];
 
   return selected.some(s => certs.includes(normalizeCertificateValue(s)));
 }
@@ -1326,7 +1263,6 @@ function rebuildMissingNoCoords(){
     }
   }
 }
-
 function updateLoadStatusCounts(prefix=""){
   const totalC = customers.length;
   const totalF = firms.length;
@@ -1341,7 +1277,6 @@ function updateLoadStatusCounts(prefix=""){
 async function geocodeAll(){
   const totalC = customers.length;
   const totalF = firms.length;
-
   let doneC = customers.filter(c=>isFinite(c.lat)&&isFinite(c.lon)).length;
   let doneF = firms.filter(f=>isFinite(f.lat)&&isFinite(f.lon)).length;
 
@@ -1374,59 +1309,23 @@ async function geocodeAll(){
   updateLoadStatusCounts("✅ Fertig");
 }
 
-function customerTriangleIcon(selected=false){
-  const color = selected ? "var(--highlight)" : "var(--cust-tri)";
-  const size = selected ? 24 : 18;
-  const shadow = selected
-    ? "drop-shadow(0 0 0 4px var(--highlight-ring)) drop-shadow(0 4px 10px rgba(2,6,23,.28))"
-    : "drop-shadow(0 3px 6px rgba(2,6,23,.25))";
-
+function customerTriangleIcon(selected=false, fillColor=null){
+  const color = fillColor || (selected ? getCss("--highlight") : getCss("--cust-tri"));
+  const size = selected ? 28 : 18;
   return L.divIcon({
     html:`<div style="
       width:0;height:0;
       border-left:${Math.round(size*0.55)}px solid transparent;
       border-right:${Math.round(size*0.55)}px solid transparent;
       border-bottom:${size}px solid ${color};
-      filter:${shadow};
+      filter:${selected
+        ? "drop-shadow(0 0 0 3px var(--highlight-ring)) drop-shadow(0 4px 10px rgba(2,6,23,.28))"
+        : "drop-shadow(0 3px 6px rgba(2,6,23,.25))"};
     "></div>`,
     className:"",
-    iconSize:[size+6,size+6],
-    iconAnchor:[(size+6)/2,size+2]
+    iconSize:[size+8,size+8],
+    iconAnchor:[Math.round((size+8)/2), size+2]
   });
-}
-
-function getFirmMapColor(firm){
-  if(!hasCalculatedOnce) return getComputedStyle(document.body).getPropertyValue("--firm-gray").trim() || "#9ca3af";
-
-  const cls = colorizedResultsById.get(firm.id);
-  if(cls === "good") return getComputedStyle(document.body).getPropertyValue("--good").trim() || "#16a34a";
-  if(cls === "mid")  return getComputedStyle(document.body).getPropertyValue("--mid").trim() || "#f59e0b";
-  if(cls === "bad")  return getComputedStyle(document.body).getPropertyValue("--bad").trim() || "#dc2626";
-
-  return getComputedStyle(document.body).getPropertyValue("--firm-gray").trim() || "#9ca3af";
-}
-function getCustomerMapColor(customer){
-  if(!hasCalculatedOnce) return null;
-
-  const cls = colorizedResultsById.get(customer.id);
-  if(cls === "good") return getComputedStyle(document.body).getPropertyValue("--good").trim() || "#16a34a";
-  if(cls === "mid")  return getComputedStyle(document.body).getPropertyValue("--mid").trim() || "#f59e0b";
-  if(cls === "bad")  return getComputedStyle(document.body).getPropertyValue("--bad").trim() || "#dc2626";
-
-  return null;
-}
-function getPriceClassByRow(row){
-  if(!row || !isFinite(row.deliveredPerT)) return null;
-  if(row.deliveredPerT <= 260) return "good";
-  if(row.deliveredPerT <= 285) return "mid";
-  return "bad";
-}
-function rebuildColorizedResults(results){
-  colorizedResultsById = new Map();
-  for(const r of results){
-    const cls = getPriceClassByRow(r);
-    if(cls) colorizedResultsById.set(r.entity.id, cls);
-  }
 }
 
 function customerMatchesSelectedProduct(customer, product){
@@ -1444,6 +1343,43 @@ function getVisibleFirms(){
   return firms.filter(matchesCertificateFilter);
 }
 
+function clearMarkerState(){
+  hasCalculatedOnce = false;
+  markerStateById = new Map();
+}
+function getCss(name){
+  return getComputedStyle(document.body).getPropertyValue(name).trim();
+}
+
+function getRowColorClass(row, targetVk){
+  if(isFinite(targetVk)){
+    const m = row.marginPerT;
+    if(!isFinite(m)) return null;
+    if(m >= 10) return "good";
+    if(m >= 0) return "mid";
+    return "bad";
+  }else{
+    const p = row.deliveredPerT;
+    if(!isFinite(p)) return null;
+    if(p <= 260) return "good";
+    if(p <= 285) return "mid";
+    return "bad";
+  }
+}
+function classToColor(cls){
+  if(cls === "good") return getCss("--good");
+  if(cls === "mid") return getCss("--mid");
+  if(cls === "bad") return getCss("--bad");
+  return getCss("--firm-gray") || "#9ca3af";
+}
+function rebuildMarkerState(results, targetVk){
+  markerStateById = new Map();
+  for(const row of results){
+    const cls = getRowColorClass(row, targetVk);
+    if(cls) markerStateById.set(row.entity.id, cls);
+  }
+}
+
 function renderMarkers(){
   customerMarkers.forEach(m=>m.remove());
   firmMarkers.forEach(m=>m.remove());
@@ -1451,40 +1387,18 @@ function renderMarkers(){
 
   const inputs = getInputs();
   const outline = document.body.classList.contains("dark") ? "rgba(229,231,235,.9)" : "rgba(15,23,42,.9)";
-  const highlight = getComputedStyle(document.body).getPropertyValue("--highlight").trim() || "#e11d48";
-  const highlightRing = getComputedStyle(document.body).getPropertyValue("--highlight-ring").trim() || "rgba(225,29,72,.22)";
 
   customers.forEach(c=>{
     if(!isFinite(c.lat)||!isFinite(c.lon)) return;
     if(!customerMatchesSelectedProduct(c, inputs.product)) return;
 
     const isSelected = selectedCustomer && selectedCustomer.id === c.id;
-    const dynamicColor = getCustomerMapColor(c);
-    const markerIcon = dynamicColor
-      ? L.divIcon({
-          html:`<div style="
-            width:0;height:0;
-            border-left:${isSelected ? 13 : 10}px solid transparent;
-            border-right:${isSelected ? 13 : 10}px solid transparent;
-            border-bottom:${isSelected ? 24 : 18}px solid ${dynamicColor};
-            filter:${isSelected
-              ? "drop-shadow(0 0 0 4px var(--highlight-ring)) drop-shadow(0 4px 10px rgba(2,6,23,.28))"
-              : "drop-shadow(0 3px 6px rgba(2,6,23,.25))"};
-          "></div>`,
-          className:"",
-          iconSize:[30,30],
-          iconAnchor:[15,24]
-        })
-      : customerTriangleIcon(isSelected);
+    const cls = markerStateById.get(c.id);
+    const fillColor = hasCalculatedOnce && cls ? classToColor(cls) : null;
 
-    const m = L.marker([c.lat,c.lon], {icon: markerIcon}).addTo(map);
-
-    if(isSelected){
-      const ring = L.circleMarker([c.lat,c.lon], {
-        radius:16,color:highlight,weight:3,fillColor:highlightRing,fillOpacity:0.25
-      }).addTo(map);
-      customerMarkers.push(ring);
-    }
+    const m = L.marker([c.lat,c.lon], {
+      icon: customerTriangleIcon(isSelected, fillColor)
+    }).addTo(map);
 
     m.on("click", async ()=>{
       if(getSearchType()==="kunden"){
@@ -1502,23 +1416,17 @@ function renderMarkers(){
     if(!isFinite(f.lat)||!isFinite(f.lon)) return;
     if(!matchesCertificateFilter(f)) return;
 
-    const fill = getFirmMapColor(f);
     const isSelected = selectedFirm && selectedFirm.id === f.id;
+    const cls = markerStateById.get(f.id);
+    const fill = hasCalculatedOnce && cls ? classToColor(cls) : (getCss("--firm-gray") || "#9ca3af");
 
     const m = L.circleMarker([f.lat,f.lon], {
       radius:isSelected ? 10 : 7,
-      color:isSelected ? highlight : outline,
+      color:isSelected ? getCss("--highlight") : outline,
       weight:isSelected ? 4 : 2,
       fillColor:fill,
       fillOpacity:.95
     }).addTo(map);
-
-    if(isSelected){
-      const ring = L.circleMarker([f.lat,f.lon], {
-        radius:18,color:highlight,weight:2,fillColor:highlightRing,fillOpacity:0.18
-      }).addTo(map);
-      firmMarkers.push(ring);
-    }
 
     m.on("click", async ()=>{
       if(getSearchType()==="firmen"){
@@ -1538,7 +1446,6 @@ function renderMarkers(){
 
 function openFirmPriceAndNotePopup(firm, latlng){
   const product = document.getElementById("product").value;
-
   const currentOverride = priceOverrides?.[firm.id]?.[product];
   const currentPrice = isFinite(currentOverride) ? currentOverride : firm.base[product];
   const currentNote = (notesStore?.[firm.id] || "").trim();
@@ -1617,8 +1524,7 @@ function initUI(){
   });
 
   document.getElementById("product").addEventListener("change", ()=>{
-    hasCalculatedOnce = false;
-    colorizedResultsById = new Map();
+    clearMarkerState();
 
     const origin = getOrigin();
     if(getSearchType()==="kunden" && origin && !customerMatchesSelectedProduct(origin, document.getElementById("product").value)){
@@ -1648,8 +1554,7 @@ function initUI(){
     updateMiniKpis({good:0, mid:0, bad:0});
     lastResults = [];
     currentFocusedRow = null;
-    hasCalculatedOnce = false;
-    colorizedResultsById = new Map();
+    clearMarkerState();
 
     if(getSearchType()==="kunden"){
       selectedFirm = null;
@@ -1661,12 +1566,11 @@ function initUI(){
       selectedCustomer = null;
       updateOriginKpi(selectedFirm);
     }
+
     renderMarkers();
     updateModeUI();
-
-    const input = document.getElementById("custSearch");
-    input.value = "";
-    document.getElementById("ac").style.display="none";
+    document.getElementById("custSearch").value = "";
+    document.getElementById("ac").style.display = "none";
   });
 
   const input = document.getElementById("custSearch");
@@ -1680,6 +1584,7 @@ function initUI(){
     ac.style.top  = (r.bottom + window.scrollY + 8) + "px";
     ac.style.minWidth = Math.max(280, r.width) + "px";
   }
+
   window.addEventListener("resize", positionAC);
   window.addEventListener("scroll", positionAC, true);
 
@@ -1740,13 +1645,13 @@ function initUI(){
 
     const tag = getSearchType()==="kunden" ? "Kunde" : "Firma";
     for(const x of out){
-      const certInfo = getSearchType()==="firmen"
+      const info = getSearchType()==="firmen"
         ? `<div class="tag">${esc(tag)} · ${esc((x.certificates||[]).map(certificateLabel).join(", ") || "—")}</div>`
         : `<div class="tag">${esc(tag)} · ${esc(productLabel(document.getElementById("product").value))}</div>`;
 
       const div=document.createElement("div");
       div.className="item";
-      div.innerHTML = `<div class="name">${esc(x.name)}</div><div class="addr">${esc(x.address)}</div>${certInfo}`;
+      div.innerHTML = `<div class="name">${esc(x.name)}</div><div class="addr">${esc(x.address)}</div>${info}`;
       div.addEventListener("click", ()=>{
         selectEntity(x);
         ac.style.display="none";
@@ -1775,10 +1680,8 @@ function applyThemeFromLS(){
   const t = loadLS(LS_THEME_KEY, "light");
   if(t === "dark") document.body.classList.add("dark");
 }
-
 function setLoadStatus(text){
-  const el = document.getElementById("loadStatus");
-  el.innerHTML = `<span class="dot"></span> ${esc(text)}`;
+  document.getElementById("loadStatus").innerHTML = `<span class="dot"></span> ${esc(text)}`;
 }
 
 function getSearchType(){ return document.getElementById("searchType")?.value || "kunden"; }
@@ -1799,7 +1702,6 @@ function selectCustomer(c){
   const panel = document.getElementById("panel");
   panel.classList.remove("hidden");
   if(isMobile) panel.classList.remove("collapsed");
-
   setTimeout(()=>map.invalidateSize(), 50);
 }
 
@@ -1818,7 +1720,6 @@ function selectFirm(f){
   const panel = document.getElementById("panel");
   panel.classList.remove("hidden");
   if(isMobile) panel.classList.remove("collapsed");
-
   setTimeout(()=>map.invalidateSize(), 50);
 }
 
@@ -1847,8 +1748,7 @@ async function calculate(){
     out.innerHTML = `<div class="small">Bitte zuerst ${mode==="kunden" ? "einen Kunden" : "eine Firma"} auswählen (ggf. einmal „Geocoden“ drücken).</div>`;
     document.getElementById("kpiCount").textContent = "—";
     updateMiniKpis({good:0, mid:0, bad:0});
-    hasCalculatedOnce = false;
-    colorizedResultsById = new Map();
+    clearMarkerState();
     renderMarkers();
     return;
   }
@@ -1865,8 +1765,7 @@ async function calculate(){
     if(origin.accepts && origin.accepts[product] === false){
       out.innerHTML = `<div class="small">⚠️ <b>${esc(origin.name)}</b> nimmt <b>${esc(productLabel(product))}</b> nicht an.</div>`;
       document.getElementById("kpiCount").textContent = "0";
-      hasCalculatedOnce = false;
-      colorizedResultsById = new Map();
+      clearMarkerState();
       renderMarkers();
       return;
     }
@@ -1882,18 +1781,15 @@ async function calculate(){
       const base = isFinite(override) ? override : f.base[product];
       if(!isFinite(base) || base <= 0) continue;
 
-      const calcKm = kmAir;
-      const freightPerT = (calcKm * freightPerKm / qtyT) * factor;
+      const freightPerT = (kmAir * freightPerKm / qtyT) * factor;
       const deliveredPerT = base + freightPerT;
       const deliveredTotal = deliveredPerT * qtyT;
-
-      let marginPerT = null;
-      if(isFinite(targetVk)) marginPerT = targetVk - deliveredPerT;
+      const marginPerT = isFinite(targetVk) ? (targetVk - deliveredPerT) : NaN;
 
       results.push({
         entity:f,
         kmAir,
-        calcKm,
+        calcKm: kmAir,
         base,
         freightPerT,
         deliveredPerT,
@@ -1903,42 +1799,36 @@ async function calculate(){
     }
   }else{
     const firm = origin;
-
     const overrideFirm = priceOverrides?.[firm.id]?.[product];
     const baseFirm = isFinite(overrideFirm) ? overrideFirm : firm.base?.[product];
+
     if(!isFinite(baseFirm) || baseFirm <= 0){
       out.innerHTML = `<div class="small">⚠️ Für <b>${esc(firm.name)}</b> fehlt Basis-Preis für <b>${esc(productLabel(product))}</b>. Rechtsklick Firma → Preis eingeben.</div>`;
       document.getElementById("kpiCount").textContent = "0";
-      hasCalculatedOnce = false;
-      colorizedResultsById = new Map();
+      clearMarkerState();
       renderMarkers();
       return;
     }
 
-    const zoneActive = !!zoneLayer;
-    if(!zoneActive){
+    if(!zoneLayer){
       out.innerHTML = `<div class="small" style="margin-bottom:10px;">ℹ️ Keine Zone gezeichnet. Tipp: <b>✏️ Zone</b> klicken und Bereich einzeichnen.</div>`;
     }
 
     for(const c of customers){
       if(!isFinite(c.lat)||!isFinite(c.lon)) continue;
       if(!customerMatchesSelectedProduct(c, product)) continue;
-      if(zoneActive && !pointInZone(c.lat, c.lon)) continue;
+      if(zoneLayer && !pointInZone(c.lat, c.lon)) continue;
 
       const kmAir = haversineKm(firm.lat, firm.lon, c.lat, c.lon);
-      const calcKm = kmAir;
-
-      const freightPerT = (calcKm * freightPerKm / qtyT) * factor;
+      const freightPerT = (kmAir * freightPerKm / qtyT) * factor;
       const deliveredPerT = baseFirm + freightPerT;
       const deliveredTotal = deliveredPerT * qtyT;
-
-      let marginPerT = null;
-      if(isFinite(targetVk)) marginPerT = targetVk - deliveredPerT;
+      const marginPerT = isFinite(targetVk) ? (targetVk - deliveredPerT) : NaN;
 
       results.push({
         entity:c,
         kmAir,
-        calcKm,
+        calcKm: kmAir,
         base: baseFirm,
         freightPerT,
         deliveredPerT,
@@ -1951,11 +1841,10 @@ async function calculate(){
   results.sort((a,b)=>a.deliveredPerT - b.deliveredPerT);
   lastResults = results;
   document.getElementById("kpiCount").textContent = String(results.length);
-
   updateMiniKpis(countMargins(results, targetVk));
 
   hasCalculatedOnce = true;
-  rebuildColorizedResults(results);
+  rebuildMarkerState(results, targetVk);
   renderMarkers();
 
   if(!results.length){
@@ -2026,18 +1915,20 @@ function updateMiniKpis({good, mid, bad}){
   document.getElementById("miniBad").textContent  = String(bad ?? 0);
 }
 function makeBadge(row, targetVk){
-  if(!isFinite(targetVk)){
-    const cls = getPriceClassByRow(row);
+  const cls = getRowColorClass(row, targetVk);
+
+  if(isFinite(targetVk)){
+    const m = row.marginPerT;
+    if(!isFinite(m)) return `<span class="badge">—</span>`;
+    if(cls === "good") return `<span class="badge good">+${fmt(m)} €/t</span>`;
+    if(cls === "mid")  return `<span class="badge mid">+${fmt(m)} €/t</span>`;
+    return `<span class="badge bad">${fmt(m)} €/t</span>`;
+  }else{
     if(cls === "good") return `<span class="badge good">günstig</span>`;
-    if(cls === "mid") return `<span class="badge mid">mittel</span>`;
-    if(cls === "bad") return `<span class="badge bad">teuer</span>`;
+    if(cls === "mid")  return `<span class="badge mid">mittel</span>`;
+    if(cls === "bad")  return `<span class="badge bad">teuer</span>`;
     return `<span class="badge">Klick für Route</span>`;
   }
-  const m = row.marginPerT;
-  if(!isFinite(m)) return `<span class="badge">—</span>`;
-  if(m >= 10) return `<span class="badge good">+${fmt(m)} €/t</span>`;
-  if(m >= 0)  return `<span class="badge mid">+${fmt(m)} €/t</span>`;
-  return `<span class="badge bad">${fmt(m)} €/t</span>`;
 }
 
 function clearRoute(){
@@ -2091,7 +1982,7 @@ async function showRouteDetails(origin, target, baseRow){
     if(route.geometry && route.geometry.coordinates){
       const latlngs = route.geometry.coordinates.map(([lon, lat]) => [lat, lon]);
       routeLayer = L.polyline(latlngs, {
-        color: getComputedStyle(document.body).getPropertyValue("--route").trim() || "#2563eb",
+        color: getCss("--route") || "#2563eb",
         weight: 5,
         opacity: 0.9
       }).addTo(map);
