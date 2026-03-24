@@ -36,6 +36,9 @@
 
       --highlight:#e11d48;
       --highlight-ring:rgba(225,29,72,.22);
+
+      --firm-gray:#9ca3af;
+      --firm-outline:#374151;
     }
 
     body.dark{
@@ -55,6 +58,9 @@
 
       --highlight:#fb7185;
       --highlight-ring:rgba(251,113,133,.22);
+
+      --firm-gray:#94a3b8;
+      --firm-outline:#e5e7eb;
     }
 
     html,body{height:100%;margin:0;background:var(--ui-bg);overscroll-behavior:none;}
@@ -213,14 +219,6 @@
     }
     .rcard textarea{min-height:84px;resize:vertical;}
     .rcard .note{font-size:12px;color:var(--ui-muted);margin-top:6px}
-
-    .tri{
-      width:0;height:0;
-      border-left:10px solid transparent;
-      border-right:10px solid transparent;
-      border-bottom:18px solid var(--cust-tri);
-      filter: drop-shadow(0 3px 6px rgba(2,6,23,.25));
-    }
 
     .missPanel{
       position:absolute; right:12px; top:56px; z-index:6000;
@@ -394,15 +392,6 @@
     </div>
   </div>
 
-  <div class="field w140 desktopOnly">
-    <label>Farbschema</label>
-    <select id="colorScheme">
-      <option value="standard">Standard</option>
-      <option value="pink">Pink</option>
-      <option value="pastel">Pastell</option>
-    </select>
-  </div>
-
   <div class="field w140 desktopOnly" id="radiusWrapDesktop">
     <label>Radius (km)</label>
     <input id="radiusKm" type="number" min="0" value="250">
@@ -481,11 +470,6 @@
           <label><input type="checkbox" value="kein zertifikat"> Kein Zertifikat</label>
         </div>
       </div>
-    </div>
-
-    <div class="field">
-      <label>Farbschema</label>
-      <select id="colorSchemeMobile"></select>
     </div>
 
     <div class="field" id="radiusWrapMobile">
@@ -603,16 +587,83 @@ const CONFIG = {
   geocodeDelayMs: 1100
 };
 
-const LS_GEO_CACHE_KEY = "salesMap_geoCache_v14";
-const LS_PRICE_OVERRIDES_KEY = "salesMap_priceOverrides_v14";
-const LS_PANEL_POS_KEY = "salesMap_panelPos_v14";
-const LS_COLOR_SCHEME_KEY = "salesMap_colorScheme_v9";
-const LS_THEME_KEY = "salesMap_theme_v8";
-const LS_NOTES_KEY = "salesMap_notes_v4";
-const LS_ZONE_GEOJSON_KEY = "salesMap_zone_geojson_v4";
+const LS_GEO_CACHE_KEY = "salesMap_geoCache_v15";
+const LS_PRICE_OVERRIDES_KEY = "salesMap_priceOverrides_v15";
+const LS_PANEL_POS_KEY = "salesMap_panelPos_v15";
+const LS_THEME_KEY = "salesMap_theme_v9";
+const LS_NOTES_KEY = "salesMap_notes_v5";
+const LS_ZONE_GEOJSON_KEY = "salesMap_zone_geojson_v5";
 
 const missing = { firmen: [], kunden: [], auftraege: [] };
 let activeMissTab = "firmen";
+
+let map, customers=[], firms=[];
+let customerMarkers=[], firmMarkers=[];
+let selectedCustomer=null;
+let selectedFirm=null;
+let routeLayer=null;
+
+let deliveriesLoaded = false;
+let deliveriesAgg = [];
+let deliveriesByCustomer = new Map();
+let deliveriesByFirm = new Map();
+
+let geoCache = loadLS(LS_GEO_CACHE_KEY, {});
+let priceOverrides = loadLS(LS_PRICE_OVERRIDES_KEY, {});
+let notesStore = loadLS(LS_NOTES_KEY, {});
+let isMobile = false;
+
+let zoneGroup = null;
+let zoneLayer = null;
+let drawControl = null;
+
+let lastResults = [];
+let currentFocusedRow = null;
+let colorizedResultsById = new Map();
+let hasCalculatedOnce = false;
+
+window.addEventListener("load", ()=>init().catch(err=>{
+  console.error("INIT ERROR:", err);
+  alert("Fehler beim Laden der Karte. Öffne F12 → Konsole für Details.");
+}));
+
+async function init(){
+  applyThemeFromLS();
+  if(!window.L) throw new Error("Leaflet (L) nicht geladen.");
+
+  map = L.map("map", { worldCopyJump:true }).setView([51.2, 10.4], 6);
+
+  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+    maxZoom: 19,
+    attribution: "&copy; OpenStreetMap contributors"
+  }).addTo(map);
+
+  setTimeout(()=>map.invalidateSize(), 80);
+
+  initZoneTools();
+  initPanelDragDesktopOnly();
+  initUI();
+  initMissingUI();
+  initMobileUI();
+  initCertificateFilters();
+  applyResponsiveLayout();
+  window.addEventListener("resize", applyResponsiveLayout);
+
+  map.on("click", ()=>{ closeDrawer(); });
+
+  setLoadStatus("Lade Tabellen …");
+
+  await loadCustomers();
+  await loadFirms();
+  await loadDeliveries();
+
+  applyCacheCoordsOnly();
+  renderMarkers();
+  updateOriginKpi(null);
+  updateLoadStatusCounts("✅ geladen");
+  updateMiniKpis({good:0, mid:0, bad:0});
+  updateModeUI();
+}
 
 function addMissing(tab, name, reason, extra){
   missing[tab].push({
@@ -658,72 +709,6 @@ function exportMissingCsv(){
   a.download = `nicht_geladen_${tab}.csv`;
   a.click();
   URL.revokeObjectURL(a.href);
-}
-
-let map, customers=[], firms=[];
-let customerMarkers=[], firmMarkers=[];
-let selectedCustomer=null;
-let selectedFirm=null;
-let routeLayer=null;
-
-let deliveriesLoaded = false;
-let deliveriesAgg = [];
-let deliveriesByCustomer = new Map();
-let deliveriesByFirm = new Map();
-
-let geoCache = loadLS(LS_GEO_CACHE_KEY, {});
-let priceOverrides = loadLS(LS_PRICE_OVERRIDES_KEY, {});
-let notesStore = loadLS(LS_NOTES_KEY, {});
-let isMobile = false;
-
-let zoneGroup = null;
-let zoneLayer = null;
-let drawControl = null;
-
-let lastResults = [];
-let currentFocusedRow = null;
-
-window.addEventListener("load", ()=>init().catch(err=>{
-  console.error("INIT ERROR:", err);
-  alert("Fehler beim Laden der Karte. Öffne F12 → Konsole für Details.");
-}));
-
-async function init(){
-  applyThemeFromLS();
-  if(!window.L) throw new Error("Leaflet (L) nicht geladen.");
-
-  map = L.map("map", { worldCopyJump:true }).setView([51.2, 10.4], 6);
-
-  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-    maxZoom: 19,
-    attribution: "&copy; OpenStreetMap contributors"
-  }).addTo(map);
-
-  setTimeout(()=>map.invalidateSize(), 80);
-
-  initZoneTools();
-  initPanelDragDesktopOnly();
-  initUI();
-  initMissingUI();
-  initMobileUI();
-  initCertificateFilters();
-  applyResponsiveLayout();
-  window.addEventListener("resize", applyResponsiveLayout);
-
-  map.on("click", ()=>{ closeDrawer(); });
-
-  setLoadStatus("Lade Tabellen …");
-
-  await loadCustomers();
-  await loadFirms();
-  await loadDeliveries();
-
-  applyCacheCoordsOnly();
-  renderMarkers();
-  updateOriginKpi(null);
-  updateLoadStatusCounts("✅ geladen");
-  updateMiniKpis({good:0, mid:0, bad:0});
-  updateModeUI();
 }
 
 function applyResponsiveLayout(){
@@ -874,7 +859,6 @@ function initMobileUI(){
   backdrop.addEventListener("click", ()=>closeDrawer());
 
   syncMobileSelect("product", "productMobile");
-  syncMobileSelect("colorScheme", "colorSchemeMobile");
   syncMobileSelect("searchType", "searchTypeMobile");
 
   syncMobileInput("radiusKm", "radiusKmMobile");
@@ -1114,18 +1098,9 @@ function pickRowField(r, keys=[], fallbackIndex=null){
 }
 function getCustomerAcceptsFromRow(r){
   return {
-    lose: isYes(pickRowField(r,
-      ["lose","lose pellets","losepellets","pellets lose","lose-pellets","c"],
-      2
-    )),
-    sackware: isYes(pickRowField(r,
-      ["sackware","sackware pellets","sackwaren","pellets sackware","d"],
-      3
-    )),
-    industrieware: isYes(pickRowField(r,
-      ["industrieware","industrie","industriewaren","sonstige","e"],
-      4
-    ))
+    lose: isYes(pickRowField(r, ["lose","lose pellets","losepellets","pellets lose","lose-pellets","c"], 2)),
+    sackware: isYes(pickRowField(r, ["sackware","sackware pellets","sackwaren","pellets sackware","d"], 3)),
+    industrieware: isYes(pickRowField(r, ["industrieware","industrie","industriewaren","sonstige","e"], 4))
   };
 }
 
@@ -1256,28 +1231,38 @@ async function loadDeliveries(){
 }
 
 function normalizeCertificateValue(v){
-  const s = String(v || "").trim().toLowerCase();
+  let s = String(v || "").trim().toLowerCase();
   if(!s) return "";
-  if(s === "enplus" || s === "en plus" || s === "en-plus") return "enplus";
-  if(s === "dinplus" || s === "din plus" || s === "din-plus") return "dinplus";
+  s = s.replace(/\s+/g, " ");
+
+  if(["enplus","en plus","en-plus"].includes(s)) return "enplus";
+  if(["dinplus","din plus","din-plus"].includes(s)) return "dinplus";
   if(s === "sure") return "sure";
   if(s === "cpp") return "cpp";
-  if(s === "kein zertifikat" || s === "ohne zertifikat" || s === "keine" || s === "kein") return "kein zertifikat";
+  if(["kein zertifikat","ohne zertifikat","keine","kein","ohne"].includes(s)) return "kein zertifikat";
   return s;
 }
 function normalizeCertificates(raw){
   const txt = String(raw || "").trim();
   if(!txt) return ["kein zertifikat"];
-  return txt
-    .split(",")
+
+  const normalized = txt
+    .split(/[,;/|]+/)
     .map(x => normalizeCertificateValue(x))
     .filter(Boolean);
+
+  if(!normalized.length) return ["kein zertifikat"];
+
+  return [...new Set(normalized)];
 }
 function matchesCertificateFilter(firm){
   const selected = getSelectedCertificates();
   if(!selected.length) return true;
-  const certs = Array.isArray(firm.certificates) ? firm.certificates : [];
-  return selected.some(s => certs.includes(s));
+
+  const certs = Array.isArray(firm?.certificates) ? firm.certificates.map(normalizeCertificateValue) : [];
+  if(!certs.length) certs.push("kein zertifikat");
+
+  return selected.some(s => certs.includes(normalizeCertificateValue(s)));
 }
 function certificateLabel(v){
   if(v === "enplus") return "EnPlus";
@@ -1409,16 +1394,40 @@ function customerTriangleIcon(selected=false){
     iconAnchor:[(size+6)/2,size+2]
   });
 }
-function firmColorByProduct(product){
-  const scheme = document.getElementById("colorScheme")?.value || "standard";
-  const palettes = {
-    standard: { lose:"#2563eb", sackware:"#f59e0b", industrieware:"#16a34a" },
-    pink:     { lose:"#e11d48", sackware:"#ec4899", industrieware:"#f9a8d4" },
-    pastel:   { lose:"#93c5fd", sackware:"#fdba74", industrieware:"#86efac" }
-  };
-  return palettes[scheme]?.[product] || "#2563eb";
+
+function getFirmMapColor(firm){
+  if(!hasCalculatedOnce) return getComputedStyle(document.body).getPropertyValue("--firm-gray").trim() || "#9ca3af";
+
+  const cls = colorizedResultsById.get(firm.id);
+  if(cls === "good") return getComputedStyle(document.body).getPropertyValue("--good").trim() || "#16a34a";
+  if(cls === "mid")  return getComputedStyle(document.body).getPropertyValue("--mid").trim() || "#f59e0b";
+  if(cls === "bad")  return getComputedStyle(document.body).getPropertyValue("--bad").trim() || "#dc2626";
+
+  return getComputedStyle(document.body).getPropertyValue("--firm-gray").trim() || "#9ca3af";
 }
-function firmFillColor(f, inputs){ return firmColorByProduct(inputs.product); }
+function getCustomerMapColor(customer){
+  if(!hasCalculatedOnce) return null;
+
+  const cls = colorizedResultsById.get(customer.id);
+  if(cls === "good") return getComputedStyle(document.body).getPropertyValue("--good").trim() || "#16a34a";
+  if(cls === "mid")  return getComputedStyle(document.body).getPropertyValue("--mid").trim() || "#f59e0b";
+  if(cls === "bad")  return getComputedStyle(document.body).getPropertyValue("--bad").trim() || "#dc2626";
+
+  return null;
+}
+function getPriceClassByRow(row){
+  if(!row || !isFinite(row.deliveredPerT)) return null;
+  if(row.deliveredPerT <= 260) return "good";
+  if(row.deliveredPerT <= 285) return "mid";
+  return "bad";
+}
+function rebuildColorizedResults(results){
+  colorizedResultsById = new Map();
+  for(const r of results){
+    const cls = getPriceClassByRow(r);
+    if(cls) colorizedResultsById.set(r.entity.id, cls);
+  }
+}
 
 function customerMatchesSelectedProduct(customer, product){
   if(!customer || !customer.accepts) return false;
@@ -1450,8 +1459,25 @@ function renderMarkers(){
     if(!customerMatchesSelectedProduct(c, inputs.product)) return;
 
     const isSelected = selectedCustomer && selectedCustomer.id === c.id;
+    const dynamicColor = getCustomerMapColor(c);
+    const markerIcon = dynamicColor
+      ? L.divIcon({
+          html:`<div style="
+            width:0;height:0;
+            border-left:${isSelected ? 13 : 10}px solid transparent;
+            border-right:${isSelected ? 13 : 10}px solid transparent;
+            border-bottom:${isSelected ? 24 : 18}px solid ${dynamicColor};
+            filter:${isSelected
+              ? "drop-shadow(0 0 0 4px var(--highlight-ring)) drop-shadow(0 4px 10px rgba(2,6,23,.28))"
+              : "drop-shadow(0 3px 6px rgba(2,6,23,.25))"};
+          "></div>`,
+          className:"",
+          iconSize:[30,30],
+          iconAnchor:[15,24]
+        })
+      : customerTriangleIcon(isSelected);
 
-    const m = L.marker([c.lat,c.lon], {icon: customerTriangleIcon(isSelected)}).addTo(map);
+    const m = L.marker([c.lat,c.lon], {icon: markerIcon}).addTo(map);
 
     if(isSelected){
       const ring = L.circleMarker([c.lat,c.lon], {
@@ -1476,7 +1502,7 @@ function renderMarkers(){
     if(!isFinite(f.lat)||!isFinite(f.lon)) return;
     if(!matchesCertificateFilter(f)) return;
 
-    const fill = firmFillColor(f, inputs);
+    const fill = getFirmMapColor(f);
     const isSelected = selectedFirm && selectedFirm.id === f.id;
 
     const m = L.circleMarker([f.lat,f.lon], {
@@ -1484,7 +1510,7 @@ function renderMarkers(){
       color:isSelected ? highlight : outline,
       weight:isSelected ? 4 : 2,
       fillColor:fill,
-      fillOpacity:.9
+      fillOpacity:.95
     }).addTo(map);
 
     if(isSelected){
@@ -1590,16 +1616,10 @@ function initUI(){
     renderMarkers();
   });
 
-  const schemeSel = document.getElementById("colorScheme");
-  const savedScheme = loadLS(LS_COLOR_SCHEME_KEY, "standard");
-  schemeSel.value = savedScheme || "standard";
-  schemeSel.addEventListener("change", ()=>{
-    saveLS(LS_COLOR_SCHEME_KEY, schemeSel.value);
-    renderMarkers();
-    if(getOrigin()) calculate();
-  });
-
   document.getElementById("product").addEventListener("change", ()=>{
+    hasCalculatedOnce = false;
+    colorizedResultsById = new Map();
+
     const origin = getOrigin();
     if(getSearchType()==="kunden" && origin && !customerMatchesSelectedProduct(origin, document.getElementById("product").value)){
       selectedCustomer = null;
@@ -1628,6 +1648,8 @@ function initUI(){
     updateMiniKpis({good:0, mid:0, bad:0});
     lastResults = [];
     currentFocusedRow = null;
+    hasCalculatedOnce = false;
+    colorizedResultsById = new Map();
 
     if(getSearchType()==="kunden"){
       selectedFirm = null;
@@ -1763,9 +1785,7 @@ function getSearchType(){ return document.getElementById("searchType")?.value ||
 function getOrigin(){ return (getSearchType()==="kunden") ? selectedCustomer : selectedFirm; }
 
 function selectCustomer(c){
-  if(!customerMatchesSelectedProduct(c, document.getElementById("product").value)){
-    return;
-  }
+  if(!customerMatchesSelectedProduct(c, document.getElementById("product").value)) return;
 
   selectedCustomer = c;
   selectedFirm = null;
@@ -1784,9 +1804,7 @@ function selectCustomer(c){
 }
 
 function selectFirm(f){
-  if(!matchesCertificateFilter(f)){
-    return;
-  }
+  if(!matchesCertificateFilter(f)) return;
 
   selectedFirm = f;
   selectedCustomer = null;
@@ -1829,6 +1847,9 @@ async function calculate(){
     out.innerHTML = `<div class="small">Bitte zuerst ${mode==="kunden" ? "einen Kunden" : "eine Firma"} auswählen (ggf. einmal „Geocoden“ drücken).</div>`;
     document.getElementById("kpiCount").textContent = "—";
     updateMiniKpis({good:0, mid:0, bad:0});
+    hasCalculatedOnce = false;
+    colorizedResultsById = new Map();
+    renderMarkers();
     return;
   }
 
@@ -1844,6 +1865,9 @@ async function calculate(){
     if(origin.accepts && origin.accepts[product] === false){
       out.innerHTML = `<div class="small">⚠️ <b>${esc(origin.name)}</b> nimmt <b>${esc(productLabel(product))}</b> nicht an.</div>`;
       document.getElementById("kpiCount").textContent = "0";
+      hasCalculatedOnce = false;
+      colorizedResultsById = new Map();
+      renderMarkers();
       return;
     }
 
@@ -1885,6 +1909,9 @@ async function calculate(){
     if(!isFinite(baseFirm) || baseFirm <= 0){
       out.innerHTML = `<div class="small">⚠️ Für <b>${esc(firm.name)}</b> fehlt Basis-Preis für <b>${esc(productLabel(product))}</b>. Rechtsklick Firma → Preis eingeben.</div>`;
       document.getElementById("kpiCount").textContent = "0";
+      hasCalculatedOnce = false;
+      colorizedResultsById = new Map();
+      renderMarkers();
       return;
     }
 
@@ -1926,6 +1953,9 @@ async function calculate(){
   document.getElementById("kpiCount").textContent = String(results.length);
 
   updateMiniKpis(countMargins(results, targetVk));
+
+  hasCalculatedOnce = true;
+  rebuildColorizedResults(results);
   renderMarkers();
 
   if(!results.length){
@@ -1996,7 +2026,13 @@ function updateMiniKpis({good, mid, bad}){
   document.getElementById("miniBad").textContent  = String(bad ?? 0);
 }
 function makeBadge(row, targetVk){
-  if(!isFinite(targetVk)) return `<span class="badge">Klick für Route</span>`;
+  if(!isFinite(targetVk)){
+    const cls = getPriceClassByRow(row);
+    if(cls === "good") return `<span class="badge good">günstig</span>`;
+    if(cls === "mid") return `<span class="badge mid">mittel</span>`;
+    if(cls === "bad") return `<span class="badge bad">teuer</span>`;
+    return `<span class="badge">Klick für Route</span>`;
+  }
   const m = row.marginPerT;
   if(!isFinite(m)) return `<span class="badge">—</span>`;
   if(m >= 10) return `<span class="badge good">+${fmt(m)} €/t</span>`;
