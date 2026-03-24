@@ -603,13 +603,13 @@ const CONFIG = {
   geocodeDelayMs: 1100
 };
 
-const LS_GEO_CACHE_KEY = "salesMap_geoCache_v13";
-const LS_PRICE_OVERRIDES_KEY = "salesMap_priceOverrides_v13";
-const LS_PANEL_POS_KEY = "salesMap_panelPos_v13";
-const LS_COLOR_SCHEME_KEY = "salesMap_colorScheme_v8";
-const LS_THEME_KEY = "salesMap_theme_v7";
-const LS_NOTES_KEY = "salesMap_notes_v3";
-const LS_ZONE_GEOJSON_KEY = "salesMap_zone_geojson_v3";
+const LS_GEO_CACHE_KEY = "salesMap_geoCache_v14";
+const LS_PRICE_OVERRIDES_KEY = "salesMap_priceOverrides_v14";
+const LS_PANEL_POS_KEY = "salesMap_panelPos_v14";
+const LS_COLOR_SCHEME_KEY = "salesMap_colorScheme_v9";
+const LS_THEME_KEY = "salesMap_theme_v8";
+const LS_NOTES_KEY = "salesMap_notes_v4";
+const LS_ZONE_GEOJSON_KEY = "salesMap_zone_geojson_v4";
 
 const missing = { firmen: [], kunden: [], auftraege: [] };
 let activeMissTab = "firmen";
@@ -1018,8 +1018,11 @@ function initMultiSelect(wrapperId, btnId, menuId, isMobileMenu){
         updateOriginKpi(null);
         showOrdersForOrigin(null);
       }
+
       renderMarkers();
-      if(getOrigin()) calculate();
+
+      const origin = getOrigin();
+      if(origin) calculate();
     });
   });
 }
@@ -1082,6 +1085,50 @@ function parseCsv(url){
   });
 }
 
+function getRowValues(r){
+  const vals = [];
+  for(const k of Object.keys(r || {})){
+    if(k === "__parsed_extra") continue;
+    vals.push(r[k]);
+  }
+  if(Array.isArray(r?.__parsed_extra)){
+    vals.push(...r.__parsed_extra);
+  }
+  return vals;
+}
+function rowValueByIndex(r, zeroBasedIndex){
+  const vals = getRowValues(r);
+  return vals[zeroBasedIndex];
+}
+function pickRowField(r, keys=[], fallbackIndex=null){
+  for(const k of keys){
+    if(r && Object.prototype.hasOwnProperty.call(r, k)){
+      const v = str(r[k]).trim();
+      if(v !== "") return v;
+    }
+  }
+  if(Number.isInteger(fallbackIndex)){
+    return str(rowValueByIndex(r, fallbackIndex)).trim();
+  }
+  return "";
+}
+function getCustomerAcceptsFromRow(r){
+  return {
+    lose: isYes(pickRowField(r,
+      ["lose","lose pellets","losepellets","pellets lose","lose-pellets","c"],
+      2
+    )),
+    sackware: isYes(pickRowField(r,
+      ["sackware","sackware pellets","sackwaren","pellets sackware","d"],
+      3
+    )),
+    industrieware: isYes(pickRowField(r,
+      ["industrieware","industrie","industriewaren","sonstige","e"],
+      4
+    ))
+  };
+}
+
 async function loadCustomers(){
   const rows = await parseCsv(CONFIG.customersCsvUrl);
   const list = [];
@@ -1095,16 +1142,14 @@ async function loadCustomers(){
       return;
     }
 
+    const accepts = getCustomerAcceptsFromRow(r);
+
     list.push({
       id:"C"+idx,
       name: name || ort || "Kunde",
       address: ort,
       lat: NaN, lon: NaN,
-      accepts: {
-        lose: isYes(r["lose"]),
-        sackware: isYes(r["sackware"]),
-        industrieware: isYes(r["industrieware"]) || isYes(r["industrie"]) || isYes(r["sonstige"])
-      },
+      accepts,
       raw: r
     });
   });
@@ -1375,6 +1420,21 @@ function firmColorByProduct(product){
 }
 function firmFillColor(f, inputs){ return firmColorByProduct(inputs.product); }
 
+function customerMatchesSelectedProduct(customer, product){
+  if(!customer || !customer.accepts) return false;
+  if(product === "lose") return !!customer.accepts.lose;
+  if(product === "sackware") return !!customer.accepts.sackware;
+  if(product === "industrieware") return !!customer.accepts.industrieware;
+  return true;
+}
+function getVisibleCustomers(){
+  const product = document.getElementById("product")?.value || "lose";
+  return customers.filter(c => customerMatchesSelectedProduct(c, product));
+}
+function getVisibleFirms(){
+  return firms.filter(matchesCertificateFilter);
+}
+
 function renderMarkers(){
   customerMarkers.forEach(m=>m.remove());
   firmMarkers.forEach(m=>m.remove());
@@ -1387,6 +1447,8 @@ function renderMarkers(){
 
   customers.forEach(c=>{
     if(!isFinite(c.lat)||!isFinite(c.lon)) return;
+    if(!customerMatchesSelectedProduct(c, inputs.product)) return;
+
     const isSelected = selectedCustomer && selectedCustomer.id === c.id;
 
     const m = L.marker([c.lat,c.lon], {icon: customerTriangleIcon(isSelected)}).addTo(map);
@@ -1538,6 +1600,17 @@ function initUI(){
   });
 
   document.getElementById("product").addEventListener("change", ()=>{
+    const origin = getOrigin();
+    if(getSearchType()==="kunden" && origin && !customerMatchesSelectedProduct(origin, document.getElementById("product").value)){
+      selectedCustomer = null;
+      updateOriginKpi(null);
+      showOrdersForOrigin(null);
+      clearRoute();
+      hideDetail();
+      document.getElementById("results").innerHTML = "";
+      document.getElementById("kpiCount").textContent = "—";
+    }
+
     renderMarkers();
     if(getOrigin()) calculate();
   });
@@ -1558,6 +1631,9 @@ function initUI(){
 
     if(getSearchType()==="kunden"){
       selectedFirm = null;
+      if(selectedCustomer && !customerMatchesSelectedProduct(selectedCustomer, document.getElementById("product").value)){
+        selectedCustomer = null;
+      }
       updateOriginKpi(selectedCustomer);
     }else{
       selectedCustomer = null;
@@ -1608,8 +1684,8 @@ function initUI(){
   });
 
   function getActiveList(){
-    if(getSearchType()==="kunden") return customers;
-    return firms.filter(matchesCertificateFilter);
+    if(getSearchType()==="kunden") return getVisibleCustomers();
+    return getVisibleFirms();
   }
   function bestMatch(q){
     if(!q) return null;
@@ -1644,7 +1720,7 @@ function initUI(){
     for(const x of out){
       const certInfo = getSearchType()==="firmen"
         ? `<div class="tag">${esc(tag)} · ${esc((x.certificates||[]).map(certificateLabel).join(", ") || "—")}</div>`
-        : `<div class="tag">${esc(tag)}</div>`;
+        : `<div class="tag">${esc(tag)} · ${esc(productLabel(document.getElementById("product").value))}</div>`;
 
       const div=document.createElement("div");
       div.className="item";
@@ -1687,6 +1763,10 @@ function getSearchType(){ return document.getElementById("searchType")?.value ||
 function getOrigin(){ return (getSearchType()==="kunden") ? selectedCustomer : selectedFirm; }
 
 function selectCustomer(c){
+  if(!customerMatchesSelectedProduct(c, document.getElementById("product").value)){
+    return;
+  }
+
   selectedCustomer = c;
   selectedFirm = null;
   updateOriginKpi(c);
@@ -1704,6 +1784,10 @@ function selectCustomer(c){
 }
 
 function selectFirm(f){
+  if(!matchesCertificateFilter(f)){
+    return;
+  }
+
   selectedFirm = f;
   selectedCustomer = null;
   updateOriginKpi(f);
@@ -1811,7 +1895,7 @@ async function calculate(){
 
     for(const c of customers){
       if(!isFinite(c.lat)||!isFinite(c.lon)) continue;
-      if(c.accepts && c.accepts[product] === false) continue;
+      if(!customerMatchesSelectedProduct(c, product)) continue;
       if(zoneActive && !pointInZone(c.lat, c.lon)) continue;
 
       const kmAir = haversineKm(firm.lat, firm.lon, c.lat, c.lon);
