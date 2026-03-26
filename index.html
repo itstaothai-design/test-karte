@@ -585,7 +585,7 @@ const CONFIG = {
   geocodeDelayMs: 1100
 };
 
-const LS_GEO_CACHE_KEY = "salesMap_geoCache_v16";
+const LS_GEO_CACHE_KEY = "salesMap_geoCache_v17";
 const LS_PRICE_OVERRIDES_KEY = "salesMap_priceOverrides_v16";
 const LS_PANEL_POS_KEY = "salesMap_panelPos_v16";
 const LS_THEME_KEY = "salesMap_theme_v10";
@@ -1057,23 +1057,42 @@ function getCustomerAcceptsFromRow(r){
   };
 }
 
+function buildAddressFromParts(parts){
+  const clean = parts
+    .map(v => str(v).trim())
+    .filter(v => v !== "");
+  return clean.join(", ");
+}
+function buildCustomerAddress(r){
+  const street = pickRowField(r, ["straße","strasse","street"], 1);
+  const plz    = pickRowField(r, ["plz","postleitzahl","zip"], 2);
+  const ort    = pickRowField(r, ["ort","stadt","city"], 3);
+  const land   = pickRowField(r, ["land","country"], 4);
+
+  const newAddress = buildAddressFromParts([street, plz, ort, land]);
+  if(newAddress) return newAddress;
+
+  const oldAddress = pickRowField(r, ["adresse","address"], null);
+  return oldAddress;
+}
+
 async function loadCustomers(){
   const rows = await parseCsv(CONFIG.customersCsvUrl);
   const list = [];
 
   rows.forEach((r, idx)=>{
     const name = str(r["name"] ?? r["kundenname"] ?? r["kunde"] ?? r["firma"] ?? r["unternehmen"]).trim();
-    const ort  = str(r["ort"] ?? r["adresse"] ?? r["address"]).trim();
+    const addr = buildCustomerAddress(r);
 
-    if(!ort){
+    if(!addr){
       addMissing("kunden", name || "Kunde", "Keine Adresse", `Zeile: ${idx+2}`);
       return;
     }
 
     list.push({
       id:"C"+idx,
-      name: name || ort || "Kunde",
-      address: ort,
+      name: name || addr || "Kunde",
+      address: addr,
       lat: NaN, lon: NaN,
       accepts: getCustomerAcceptsFromRow(r),
       raw: r
@@ -1644,10 +1663,12 @@ function initUI(){
     if(!out.length){ ac.style.display="none"; return; }
 
     const tag = getSearchType()==="kunden" ? "Kunde" : "Firma";
+    const currentProduct = document.getElementById("product").value;
+
     for(const x of out){
       const info = getSearchType()==="firmen"
         ? `<div class="tag">${esc(tag)} · ${esc((x.certificates||[]).map(certificateLabel).join(", ") || "—")}</div>`
-        : `<div class="tag">${esc(tag)} · ${esc(productLabel(document.getElementById("product").value))}</div>`;
+        : `<div class="tag">${esc(tag)} · ${esc(productLabel(currentProduct))}</div>`;
 
       const div=document.createElement("div");
       div.className="item";
