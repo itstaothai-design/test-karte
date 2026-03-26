@@ -585,7 +585,7 @@ const CONFIG = {
   geocodeDelayMs: 1100
 };
 
-const LS_GEO_CACHE_KEY = "salesMap_geoCache_v17";
+const LS_GEO_CACHE_KEY = "salesMap_geoCache_v18";
 const LS_PRICE_OVERRIDES_KEY = "salesMap_priceOverrides_v16";
 const LS_PANEL_POS_KEY = "salesMap_panelPos_v16";
 const LS_THEME_KEY = "salesMap_theme_v10";
@@ -1076,6 +1076,20 @@ function buildCustomerAddress(r){
   return oldAddress;
 }
 
+/* NEU: Firmen-Adresse genau wie bei Kunden bauen */
+function buildFirmAddress(r){
+  const street = pickRowField(r, ["straße","strasse","street"], 1);
+  const plz    = pickRowField(r, ["plz","postleitzahl","zip"], 2);
+  const ort    = pickRowField(r, ["ort","stadt","city"], 3);
+  const land   = pickRowField(r, ["land","country"], 4);
+
+  const newAddress = buildAddressFromParts([street, plz, ort, land]);
+  if(newAddress) return newAddress;
+
+  const fallback = pickRowField(r, ["adresse","address"], null);
+  return fallback;
+}
+
 async function loadCustomers(){
   const rows = await parseCsv(CONFIG.customersCsvUrl);
   const list = [];
@@ -1108,9 +1122,9 @@ async function loadFirms(){
 
   rows.forEach((r, idx)=>{
     const name = str(r["firma"] ?? r["name"]).trim();
-    const ort  = str(r["ort"] ?? r["adresse"] ?? r["address"]).trim();
+    const addr = buildFirmAddress(r);
 
-    if(!ort){
+    if(!addr){
       addMissing("firmen", name || "Firma", "Keine Adresse", `Zeile: ${idx+2}`);
       return;
     }
@@ -1118,11 +1132,11 @@ async function loadFirms(){
     list.push({
       id:"F"+idx,
       name: name || "Firma",
-      address: ort,
+      address: addr,
       base:{
         lose: toNum(r["preis"]),
-        sackware: toNum(r["sackwarenp"] ?? r["sackwarep"] ?? r["sackwarepreis"]),
-        industrieware: toNum(r["industriewal"] ?? r["industrieware"] ?? r["industriewar"] ?? r["industriewa"])
+        sackware: toNum(r["sackwarenpreis"] ?? r["sackwarenp"] ?? r["sackwarep"] ?? r["sackwarepreis"]),
+        industrieware: toNum(r["industrieware"] ?? r["industriewal"] ?? r["industriewar"] ?? r["industriewa"])
       },
       stand: getStandFromRow(r),
       sackInfo: str(r["sackware"]).trim(),
@@ -2212,37 +2226,4 @@ function toNum(v){
   const hasDot   = s.includes(".");
   if(hasComma && hasDot) s = s.replace(/\./g, "").replace(",", ".");
   else if(hasComma && !hasDot) s = s.replace(",", ".");
-  else s = s.replace(/,/g, "");
-  const n = parseFloat(s);
-  return Number.isFinite(n) ? n : NaN;
-}
-function str(v){ return (v===null||v===undefined) ? "" : String(v); }
-function fmt(n, dec=2){
-  if(!isFinite(n)) return "—";
-  return n.toFixed(dec).replace(".", ",");
-}
-function sleep(ms){ return new Promise(r=>setTimeout(r, ms)); }
-function esc(s){
-  return String(s).replace(/[&<>"']/g, m=>({
-    "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"
-  }[m]));
-}
-function productLabel(p){
-  if(p==="lose") return "Lose";
-  if(p==="sackware") return "Sackware";
-  if(p==="industrieware") return "Industrieware";
-  return p;
-}
-function haversineKm(lat1, lon1, lat2, lon2){
-  const R = 6371;
-  const toRad = d => d * Math.PI/180;
-  const dLat = toRad(lat2-lat1);
-  const dLon = toRad(lon2-lon1);
-  const a =
-    Math.sin(dLat/2)**2 +
-    Math.cos(toRad(lat1))*Math.cos(toRad(lat2))*(Math.sin(dLon/2)**2);
-  return 2*R*Math.asin(Math.sqrt(a));
-}
-</script>
-</body>
-</html>
+  else s = s
