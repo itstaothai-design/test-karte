@@ -1,4 +1,4 @@
- <!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="de">
 <head>
   <meta charset="utf-8"/>
@@ -148,7 +148,7 @@
 
     .panel{
       position:absolute; top:88px; right:12px; z-index:2500;
-      width:640px; max-height:calc(100vh - 110px);
+      width:720px; max-height:calc(100vh - 110px);
       display:flex; flex-direction:column;
       background:var(--ui-bg);
       border:1px solid var(--ui-border);
@@ -174,11 +174,25 @@
     }
     .panel-b{padding:10px 12px;overflow:auto;user-select:text;}
 
-    .kpis{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:10px;}
+    .kpis{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:10px;margin-bottom:10px;}
     .kpi{border:1px solid var(--ui-border);background:var(--ui-soft);border-radius:14px;padding:10px;}
     .kpi .h{font-size:12px;color:var(--ui-muted)}
     .kpi .v{font-weight:900;font-size:16px;margin-top:2px}
     .small{font-size:12px;color:var(--ui-muted)}
+
+    .kpi.clickable{cursor:pointer;transition:transform .08s ease, box-shadow .08s ease;}
+    .kpi.clickable:hover{transform:translateY(-1px);box-shadow:0 6px 18px rgba(2,6,23,.08);}
+    .kpiActions{margin-top:8px;display:flex;gap:6px;flex-wrap:wrap;}
+    .miniBtn{
+      border:1px solid var(--ui-border);
+      background:var(--ui-bg);
+      color:var(--ui-text);
+      border-radius:10px;
+      padding:4px 8px;
+      font-size:12px;
+      font-weight:800;
+      cursor:pointer;
+    }
 
     .detail{
       border:1px solid var(--ui-border);
@@ -332,6 +346,73 @@
       width:16px;height:16px;min-width:16px;
     }
 
+    .lagerBackdrop{
+      position:fixed; inset:0; z-index:7000;
+      background:rgba(0,0,0,.35);
+      backdrop-filter:blur(2px);
+      display:none;
+    }
+    .lagerBackdrop.open{display:block;}
+    .lagerModal{
+      position:fixed; z-index:7100;
+      left:50%; top:50%;
+      transform:translate(-50%,-50%);
+      width:min(560px, calc(100vw - 24px));
+      background:var(--ui-bg);
+      color:var(--ui-text);
+      border:1px solid var(--ui-border);
+      border-radius:18px;
+      box-shadow:var(--ui-shadow);
+      display:none;
+      overflow:hidden;
+    }
+    .lagerModal.open{display:block;}
+    .lagerHead{
+      display:flex; align-items:center; justify-content:space-between;
+      padding:12px 14px;
+      border-bottom:1px solid var(--ui-border);
+      background:var(--ui-soft);
+    }
+    .lagerHead b{font-size:16px}
+    .lagerClose{
+      width:34px;height:34px;border-radius:10px;
+      border:1px solid var(--ui-border);
+      background:var(--ui-soft2);
+      color:var(--ui-text);
+      cursor:pointer;
+      font-weight:900;
+    }
+    .lagerBody{padding:12px;}
+    .lagerSearch{
+      width:100%;height:40px;padding:0 12px;border-radius:12px;
+      border:1px solid var(--inp-border);
+      background:var(--inp-bg);color:var(--inp-text);outline:none;box-sizing:border-box;
+    }
+    .lagerList{
+      margin-top:10px;max-height:360px;overflow:auto;
+      border:1px solid var(--ui-border);
+      border-radius:14px;
+    }
+    .lagerItem{
+      padding:10px 12px;border-bottom:1px solid var(--ui-border);cursor:pointer;
+      background:var(--ui-bg);
+    }
+    .lagerItem:last-child{border-bottom:none}
+    .lagerItem:hover{background:var(--ui-soft)}
+    .lagerItem .name{font-weight:900}
+    .lagerItem .addr{font-size:12px;color:var(--ui-muted);margin-top:2px}
+    .lagerItem .meta{font-size:11px;color:var(--ui-muted);margin-top:4px}
+    .lagerFooter{
+      display:flex;justify-content:flex-end;gap:8px;padding:12px;
+      border-top:1px solid var(--ui-border);
+      background:var(--ui-soft);
+    }
+
+    @media (max-width: 980px){
+      .kpis{grid-template-columns:1fr 1fr;}
+      .panel{width:680px;}
+    }
+
     @media (max-width: 760px){
       .topbar{gap:8px;padding:8px 10px;align-items:center;}
       .topbar .desktopOnly{display:none !important;}
@@ -340,6 +421,7 @@
       #miniKpi{display:none;}
       .ac{min-width:min(92vw, 420px);}
       .missPanel{left:10px; right:10px; width:auto; top:58px;}
+      .kpis{grid-template-columns:1fr 1fr;}
     }
 
     .leaflet-draw-toolbar a{
@@ -543,7 +625,16 @@
       <div class="kpi">
         <div class="h">Routing</div>
         <div class="v" id="kpiRoute">—</div>
-        <div class="small">Klick auf Zeile lädt echte Strecke</div>
+        <div class="small" id="kpiRouteHint">Klick auf Zeile lädt echte Strecke</div>
+      </div>
+      <div class="kpi clickable" id="lagerCard">
+        <div class="h">Lager</div>
+        <div class="v" id="kpiWarehouse">+ Lager</div>
+        <div class="small" id="kpiWarehouseAddr">Kein Lager gewählt</div>
+        <div class="kpiActions">
+          <button class="miniBtn" id="btnWarehousePick" type="button">Suchen</button>
+          <button class="miniBtn" id="btnWarehouseClear" type="button">Löschen</button>
+        </div>
       </div>
     </div>
 
@@ -560,10 +651,27 @@
     <div class="small" style="margin:6px 0 10px 0">
       <b>Modus Kunden:</b> Kunde auswählen → Firmen-Vorschläge.
       <br><b>Modus Firmen:</b> Firma auswählen → Kunden-Vorschläge.
+      <br><b>Lager:</b> Optionaler Zwischenpunkt für Firma → Lager → Kunde.
       <br><b>Route:</b> Echte Strecke wird erst beim Klick geladen.
     </div>
 
     <div id="results"></div>
+  </div>
+</div>
+
+<div id="lagerBackdrop" class="lagerBackdrop"></div>
+<div id="lagerModal" class="lagerModal" aria-hidden="true">
+  <div class="lagerHead">
+    <b>Lager auswählen</b>
+    <button id="lagerClose" class="lagerClose" type="button">✕</button>
+  </div>
+  <div class="lagerBody">
+    <input id="lagerSearch" class="lagerSearch" placeholder="Firma oder Kunde suchen …">
+    <div id="lagerList" class="lagerList"></div>
+  </div>
+  <div class="lagerFooter">
+    <button class="btn" id="lagerClearBtn" type="button">Lager löschen</button>
+    <button class="btn" id="lagerCancelBtn" type="button">Schließen</button>
   </div>
 </div>
 
@@ -585,7 +693,7 @@ const CONFIG = {
   geocodeDelayMs: 1100
 };
 
-const LS_GEO_CACHE_KEY = "salesMap_geoCache_v17";
+const LS_GEO_CACHE_KEY = "salesMap_geoCache_v18";
 const LS_PRICE_OVERRIDES_KEY = "salesMap_priceOverrides_v16";
 const LS_PANEL_POS_KEY = "salesMap_panelPos_v16";
 const LS_THEME_KEY = "salesMap_theme_v10";
@@ -599,6 +707,7 @@ let map, customers=[], firms=[];
 let customerMarkers=[], firmMarkers=[];
 let selectedCustomer=null;
 let selectedFirm=null;
+let selectedWarehouse=null;
 let routeLayer=null;
 
 let deliveriesLoaded = false;
@@ -644,6 +753,7 @@ async function init(){
   initMissingUI();
   initMobileUI();
   initCertificateFilters();
+  initWarehouseUI();
   applyResponsiveLayout();
   window.addEventListener("resize", applyResponsiveLayout);
 
@@ -658,6 +768,7 @@ async function init(){
   applyCacheCoordsOnly();
   renderMarkers();
   updateOriginKpi(null);
+  updateWarehouseKpi();
   updateLoadStatusCounts("✅ geladen");
   updateMiniKpis({good:0, mid:0, bad:0});
   updateModeUI();
@@ -971,6 +1082,11 @@ function initMultiSelect(wrapperId, btnId, menuId, isMobileMenu){
         showOrdersForOrigin(null);
       }
 
+      if(selectedWarehouse && selectedWarehouse.kind === "firma" && !matchesCertificateFilter(selectedWarehouse.ref)){
+        selectedWarehouse = null;
+        updateWarehouseKpi();
+      }
+
       clearMarkerState();
       renderMarkers();
       const origin = getOrigin();
@@ -995,6 +1111,135 @@ function updateCertificateButtonText(isMobileMenu){
   if(!btn) return;
   const selected = getSelectedCertificates();
   btn.textContent = !selected.length ? "Alle Zertifikate" : selected.map(certificateLabel).join(", ");
+}
+
+function initWarehouseUI(){
+  document.getElementById("lagerCard").addEventListener("click", (e)=>{
+    if(e.target.closest("button")) return;
+    openWarehouseModal();
+  });
+  document.getElementById("btnWarehousePick").addEventListener("click", (e)=>{
+    e.stopPropagation();
+    openWarehouseModal();
+  });
+  document.getElementById("btnWarehouseClear").addEventListener("click", (e)=>{
+    e.stopPropagation();
+    clearWarehouse();
+  });
+
+  document.getElementById("lagerClose").addEventListener("click", closeWarehouseModal);
+  document.getElementById("lagerCancelBtn").addEventListener("click", closeWarehouseModal);
+  document.getElementById("lagerClearBtn").addEventListener("click", ()=>{
+    clearWarehouse();
+    closeWarehouseModal();
+  });
+  document.getElementById("lagerBackdrop").addEventListener("click", closeWarehouseModal);
+
+  const input = document.getElementById("lagerSearch");
+  input.addEventListener("input", ()=>renderWarehouseList(input.value));
+  input.addEventListener("keydown", (e)=>{
+    if(e.key === "Escape") closeWarehouseModal();
+  });
+}
+function openWarehouseModal(){
+  document.getElementById("lagerBackdrop").classList.add("open");
+  document.getElementById("lagerModal").classList.add("open");
+  document.getElementById("lagerModal").setAttribute("aria-hidden","false");
+  const input = document.getElementById("lagerSearch");
+  input.value = "";
+  renderWarehouseList("");
+  setTimeout(()=>input.focus(), 30);
+}
+function closeWarehouseModal(){
+  document.getElementById("lagerBackdrop").classList.remove("open");
+  document.getElementById("lagerModal").classList.remove("open");
+  document.getElementById("lagerModal").setAttribute("aria-hidden","true");
+}
+function getWarehouseCandidates(){
+  const out = [];
+
+  for(const f of getVisibleFirms()){
+    if(!isFinite(f.lat) || !isFinite(f.lon)) continue;
+    out.push({
+      id: "W_F_" + f.id,
+      kind: "firma",
+      name: f.name,
+      address: f.address,
+      ref: f
+    });
+  }
+  for(const c of getVisibleCustomers()){
+    if(!isFinite(c.lat) || !isFinite(c.lon)) continue;
+    out.push({
+      id: "W_C_" + c.id,
+      kind: "kunde",
+      name: c.name,
+      address: c.address,
+      ref: c
+    });
+  }
+  return out;
+}
+function renderWarehouseList(query){
+  const box = document.getElementById("lagerList");
+  const q = String(query || "").trim().toLowerCase();
+  let list = getWarehouseCandidates();
+
+  if(q){
+    const starts = [];
+    const contains = [];
+    for(const x of list){
+      const n = (x.name || "").toLowerCase();
+      const a = (x.address || "").toLowerCase();
+      if(n.startsWith(q) || a.startsWith(q)) starts.push(x);
+      else if(n.includes(q) || a.includes(q)) contains.push(x);
+    }
+    list = [...starts, ...contains];
+  }
+
+  list = list.slice(0, 50);
+
+  if(!list.length){
+    box.innerHTML = `<div class="lagerItem"><div class="name">Keine Treffer</div><div class="addr">Bitte anderen Namen oder Ort versuchen.</div></div>`;
+    return;
+  }
+
+  box.innerHTML = list.map(x => `
+    <div class="lagerItem" data-id="${esc(x.id)}">
+      <div class="name">${esc(x.name)}</div>
+      <div class="addr">${esc(x.address)}</div>
+      <div class="meta">${x.kind === "firma" ? "Firma" : "Kunde"}</div>
+    </div>
+  `).join("");
+
+  box.querySelectorAll(".lagerItem[data-id]").forEach(el=>{
+    el.addEventListener("click", ()=>{
+      const item = list.find(x => x.id === el.dataset.id);
+      if(!item) return;
+      selectedWarehouse = item;
+      updateWarehouseKpi();
+      closeWarehouseModal();
+      if(getOrigin()) calculate();
+    });
+  });
+}
+function clearWarehouse(){
+  selectedWarehouse = null;
+  updateWarehouseKpi();
+  clearRoute();
+  hideDetail();
+  if(getOrigin()) calculate();
+}
+function updateWarehouseKpi(){
+  const nameEl = document.getElementById("kpiWarehouse");
+  const addrEl = document.getElementById("kpiWarehouseAddr");
+  if(!selectedWarehouse){
+    nameEl.textContent = "+ Lager";
+    addrEl.textContent = "Kein Lager gewählt";
+    return;
+  }
+  nameEl.textContent = selectedWarehouse.name || "Lager";
+  addrEl.textContent = `${selectedWarehouse.kind === "firma" ? "Firma" : "Kunde"} · ${selectedWarehouse.address || "—"}`;
 }
 
 function parseCsv(url){
@@ -1325,6 +1570,7 @@ async function geocodeAll(){
 
   renderMarkers();
   updateOriginKpi(getOrigin());
+  updateWarehouseKpi();
   updateLoadStatusCounts("✅ Fertig");
 }
 
@@ -1412,11 +1658,12 @@ function renderMarkers(){
     if(!customerMatchesSelectedProduct(c, inputs.product)) return;
 
     const isSelected = selectedCustomer && selectedCustomer.id === c.id;
+    const isWarehouse = selectedWarehouse && selectedWarehouse.kind === "kunde" && selectedWarehouse.ref.id === c.id;
     const cls = markerStateById.get(c.id);
     const fillColor = hasCalculatedOnce && cls ? classToColor(cls) : null;
 
     const m = L.marker([c.lat,c.lon], {
-      icon: customerTriangleIcon(isSelected, fillColor)
+      icon: customerTriangleIcon(isSelected || isWarehouse, fillColor || (isWarehouse ? getCss("--highlight") : null))
     }).addTo(map);
 
     m.on("click", async ()=>{
@@ -1436,13 +1683,14 @@ function renderMarkers(){
     if(!matchesCertificateFilter(f)) return;
 
     const isSelected = selectedFirm && selectedFirm.id === f.id;
+    const isWarehouse = selectedWarehouse && selectedWarehouse.kind === "firma" && selectedWarehouse.ref.id === f.id;
     const cls = markerStateById.get(f.id);
-    const fill = hasCalculatedOnce && cls ? classToColor(cls) : (getCss("--firm-gray") || "#9ca3af");
+    const fill = hasCalculatedOnce && cls ? classToColor(cls) : (isWarehouse ? getCss("--highlight") : (getCss("--firm-gray") || "#9ca3af"));
 
     const m = L.circleMarker([f.lat,f.lon], {
-      radius:isSelected ? 10 : 7,
-      color:isSelected ? getCss("--highlight") : outline,
-      weight:isSelected ? 4 : 2,
+      radius:(isSelected || isWarehouse) ? 10 : 7,
+      color:(isSelected || isWarehouse) ? getCss("--highlight") : outline,
+      weight:(isSelected || isWarehouse) ? 4 : 2,
       fillColor:fill,
       fillOpacity:.95
     }).addTo(map);
@@ -1554,6 +1802,11 @@ function initUI(){
       hideDetail();
       document.getElementById("results").innerHTML = "";
       document.getElementById("kpiCount").textContent = "—";
+    }
+
+    if(selectedWarehouse && selectedWarehouse.kind === "kunde" && !customerMatchesSelectedProduct(selectedWarehouse.ref, document.getElementById("product").value)){
+      selectedWarehouse = null;
+      updateWarehouseKpi();
     }
 
     renderMarkers();
@@ -1707,6 +1960,7 @@ function setLoadStatus(text){
 
 function getSearchType(){ return document.getElementById("searchType")?.value || "kunden"; }
 function getOrigin(){ return (getSearchType()==="kunden") ? selectedCustomer : selectedFirm; }
+function getWarehouseRef(){ return selectedWarehouse?.ref || null; }
 
 function selectCustomer(c){
   if(!customerMatchesSelectedProduct(c, document.getElementById("product").value)) return;
@@ -1756,6 +2010,13 @@ function getInputs(){
   };
 }
 
+function calcAirDistanceWithWarehouse(startEntity, endEntity, warehouseEntity){
+  if(!warehouseEntity) return haversineKm(startEntity.lat, startEntity.lon, endEntity.lat, endEntity.lon);
+  const leg1 = haversineKm(startEntity.lat, startEntity.lon, warehouseEntity.lat, warehouseEntity.lon);
+  const leg2 = haversineKm(warehouseEntity.lat, warehouseEntity.lon, endEntity.lat, endEntity.lon);
+  return leg1 + leg2;
+}
+
 async function calculate(){
   const out = document.getElementById("results");
   out.innerHTML = "";
@@ -1764,6 +2025,7 @@ async function calculate(){
 
   const mode = getSearchType();
   const origin = getOrigin();
+  const warehouse = getWarehouseRef();
 
   if(!origin || !isFinite(origin.lat) || !isFinite(origin.lon)){
     out.innerHTML = `<div class="small">Bitte zuerst ${mode==="kunden" ? "einen Kunden" : "eine Firma"} auswählen (ggf. einmal „Geocoden“ drücken).</div>`;
@@ -1774,11 +2036,18 @@ async function calculate(){
     return;
   }
 
+  if(warehouse && (!isFinite(warehouse.lat) || !isFinite(warehouse.lon))){
+    out.innerHTML = `<div class="small">Das gewählte Lager hat keine Koordinaten.</div>`;
+    document.getElementById("kpiCount").textContent = "—";
+    return;
+  }
+
   const inputs = getInputs();
   const {product, radiusKm, qtyT, freightPerKm, factor, targetVk} = inputs;
 
   document.getElementById("kpiQty").textContent = `Menge: ${fmt(qtyT,1)} t`;
   document.getElementById("kpiRoute").textContent = "—";
+  document.getElementById("kpiRouteHint").textContent = warehouse ? "Klick lädt echte Strecke über Lager" : "Klick auf Zeile lädt echte Strecke";
 
   const results = [];
 
@@ -1794,9 +2063,17 @@ async function calculate(){
     for(const f of firms){
       if(!isFinite(f.lat)||!isFinite(f.lon)) continue;
       if(!matchesCertificateFilter(f)) continue;
+      if(warehouse && warehouse.id === f.id) continue;
 
-      const kmAir = haversineKm(origin.lat, origin.lon, f.lat, f.lon);
-      if(kmAir > radiusKm) continue;
+      const kmAir = warehouse
+        ? calcAirDistanceWithWarehouse(f, origin, warehouse)
+        : haversineKm(origin.lat, origin.lon, f.lat, f.lon);
+
+      const kmFilter = warehouse
+        ? haversineKm(f.lat, f.lon, origin.lat, origin.lon)
+        : kmAir;
+
+      if(kmFilter > radiusKm) continue;
 
       const override = priceOverrides?.[f.id]?.[product];
       const base = isFinite(override) ? override : f.base[product];
@@ -1839,8 +2116,12 @@ async function calculate(){
       if(!isFinite(c.lat)||!isFinite(c.lon)) continue;
       if(!customerMatchesSelectedProduct(c, product)) continue;
       if(zoneLayer && !pointInZone(c.lat, c.lon)) continue;
+      if(warehouse && warehouse.id === c.id) continue;
 
-      const kmAir = haversineKm(firm.lat, firm.lon, c.lat, c.lon);
+      const kmAir = warehouse
+        ? calcAirDistanceWithWarehouse(firm, c, warehouse)
+        : haversineKm(firm.lat, firm.lon, c.lat, c.lon);
+
       const freightPerT = (kmAir * freightPerKm / qtyT) * factor;
       const deliveredPerT = baseFirm + freightPerT;
       const deliveredTotal = deliveredPerT * qtyT;
@@ -1893,12 +2174,17 @@ async function calculate(){
       ? `<br><span class="small">Zertifikat: ${esc((ent.certificates||[]).map(certificateLabel).join(", ") || "—")}</span>`
       : "";
 
+    const routeInfo = warehouse
+      ? `<br><span class="small">über Lager: ${esc(warehouse.name)}</span>`
+      : "";
+
     const tr = document.createElement("tr");
     tr.innerHTML = `
       <td>
         <b>${esc(ent.name)}</b><br>
         <span class="small">${esc(ent.address)} · Basis ${fmt(row.base)} €/t · Fracht ${fmt(row.freightPerT)} €/t</span>
         ${certInfo}
+        ${routeInfo}
       </td>
       <td>${fmt(row.calcKm,0)}</td>
       <td>
@@ -1987,18 +2273,60 @@ async function getRouteData(from, to){
   return null;
 }
 
+async function getRouteDataViaWarehouse(start, warehouse, end){
+  if(!warehouse) return null;
+
+  const leg1 = await getRouteData(start, warehouse);
+  const leg2 = await getRouteData(warehouse, end);
+
+  if(!leg1 || !leg2) return null;
+
+  const coords1 = Array.isArray(leg1.geometry?.coordinates) ? leg1.geometry.coordinates : [];
+  const coords2 = Array.isArray(leg2.geometry?.coordinates) ? leg2.geometry.coordinates : [];
+  const merged = coords1.length && coords2.length
+    ? coords1.concat(coords2.slice(1))
+    : [];
+
+  return {
+    km: (leg1.km || 0) + (leg2.km || 0),
+    minutes: (leg1.minutes || 0) + (leg2.minutes || 0),
+    geometry: { type:"LineString", coordinates: merged },
+    legs: [
+      { from:start, to:warehouse, km:leg1.km, minutes:leg1.minutes },
+      { from:warehouse, to:end, km:leg2.km, minutes:leg2.minutes }
+    ]
+  };
+}
+
 async function showRouteDetails(origin, target, baseRow){
   clearRoute();
   document.getElementById("kpiRoute").textContent = "Route lädt …";
 
-  const route = await getRouteData(origin, target);
+  const warehouse = getWarehouseRef();
+  const route = warehouse
+    ? await getRouteDataViaWarehouse(
+        getSearchType()==="kunden" ? target : origin,
+        warehouse,
+        getSearchType()==="kunden" ? origin : target
+      )
+    : await getRouteData(origin, target);
 
   let usedKm = baseRow.calcKm;
   let minutes = null;
+  let routeModeText = "Luftlinie-Fallback";
+  let leg1Km = NaN, leg2Km = NaN, leg1Min = NaN, leg2Min = NaN;
 
   if(route && isFinite(route.km)){
     usedKm = route.km;
     minutes = route.minutes;
+    routeModeText = warehouse ? "echte Strecke über Lager" : "echte Strecke";
+
+    if(warehouse && Array.isArray(route.legs) && route.legs.length === 2){
+      leg1Km = route.legs[0].km;
+      leg1Min = route.legs[0].minutes;
+      leg2Km = route.legs[1].km;
+      leg2Min = route.legs[1].minutes;
+    }
 
     if(route.geometry && route.geometry.coordinates){
       const latlngs = route.geometry.coordinates.map(([lon, lat]) => [lat, lon]);
@@ -2036,7 +2364,10 @@ async function showRouteDetails(origin, target, baseRow){
     freightPerT,
     deliveredPerT,
     deliveredTotal,
-    marginPerT
+    marginPerT,
+    routeModeText,
+    warehouseName: warehouse?.name || "",
+    leg1Km, leg2Km, leg1Min, leg2Min
   };
 
   showDetail(currentFocusedRow);
@@ -2075,10 +2406,19 @@ function showDetail(row){
     <div class="kv"><span class="k">Marge gesamt</span><span class="v">${isFinite(marginTotal) ? fmt(marginTotal) + " €" : "—"}</span></div>
 
     <div class="kv"><span class="k">Zertifikat</span><span class="v">${esc(certsText)}</span></div>
-    <div class="kv"><span class="k">Routing</span><span class="v">${isFinite(row.durationMin) ? "echte Strecke" : "Luftlinie-Fallback"}</span></div>
+    <div class="kv"><span class="k">Routing</span><span class="v">${esc(row.routeModeText || "—")}</span></div>
+
+    <div class="kv"><span class="k">Lager</span><span class="v">${row.warehouseName ? esc(row.warehouseName) : "—"}</span></div>
+    <div class="kv"><span class="k">Stand</span><span class="v">${esc(row.entity.stand || "—")}</span></div>
+
+    <div class="kv"><span class="k">Teilroute 1</span><span class="v">${isFinite(row.leg1Km) ? fmt(row.leg1Km,2) + " km" : "—"}</span></div>
+    <div class="kv"><span class="k">Teilroute 2</span><span class="v">${isFinite(row.leg2Km) ? fmt(row.leg2Km,2) + " km" : "—"}</span></div>
+
+    <div class="kv"><span class="k">Zeit Teilroute 1</span><span class="v">${isFinite(row.leg1Min) ? fmt(row.leg1Min,0) + " min" : "—"}</span></div>
+    <div class="kv"><span class="k">Zeit Teilroute 2</span><span class="v">${isFinite(row.leg2Min) ? fmt(row.leg2Min,0) + " min" : "—"}</span></div>
 
     <div class="kv"><span class="k">Notiz</span><span class="v">${note ? esc(note) : "—"}</span></div>
-    <div class="kv"><span class="k">Stand</span><span class="v">${esc(row.entity.stand || "—")}</span></div>
+    <div class="kv"><span class="k"></span><span class="v"></span></div>
   `;
 
   box.style.display="block";
