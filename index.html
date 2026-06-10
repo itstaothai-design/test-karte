@@ -573,7 +573,7 @@ window.addEventListener("load",()=>{
 async function init(){
   applyThemeFromLS();
 
- viewer=new Cesium.Viewer("map",{
+ viewer = new Cesium.Viewer("map",{
   animation:false,
   timeline:false,
   baseLayerPicker:false,
@@ -583,13 +583,16 @@ async function init(){
   navigationHelpButton:false,
   fullscreenButton:false,
   infoBox:true,
-  selectionIndicator:true,
-  imageryProvider:new Cesium.OpenStreetMapImageryProvider({
-    url:"https://tile.openstreetmap.org/"
-  }),
-  terrainProvider:new Cesium.EllipsoidTerrainProvider()
-}); 
+  selectionIndicator:true
+});
 
+viewer.imageryLayers.removeAll();
+
+viewer.imageryLayers.addImageryProvider(
+  new Cesium.OpenStreetMapImageryProvider({
+    url:"https://tile.openstreetmap.org/"
+  })
+);
   viewer.scene.globe.enableLighting=true;
   viewer.scene.globe.depthTestAgainstTerrain=false;
 
